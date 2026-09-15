@@ -1,0 +1,23 @@
+# ==============================================================================
+# Caller CI - Frontend Web (React TypeScript Vite)
+# Repositório de Destino: web-app / frontend-web
+# Coloque em: .github/workflows/ci-call.yml no repositório frontend
+# ==============================================================================
+
+name: CI Call - Frontend React Vite
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+permissions:
+  contents: read
+
+jobs:
+  call-frontend-ci:
+    name: Executar CI React Centralizado
+    uses: Efficientia/.github/.github/workflows/ci-react-vite.yml@main
+    with:
+      node-version: '20'
