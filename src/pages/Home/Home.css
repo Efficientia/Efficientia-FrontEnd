@@ -1,0 +1,88 @@
+.home-container {
+  font-family: Arial, sans-serif;
+  color: #333;
+  line-height: 1.6;
+}
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1a4a38;
+  color: white;
+}
+
+.home-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.home-nav a {
+  color: white;
+  text-decoration: none;
+  margin-left: 1rem;
+  font-weight: bold;
+}
+
+.home-nav a:hover {
+  text-decoration: underline;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: #f4f9f4;
+}
+
+.hero-section h2 {
+  font-size: 2.5rem;
+  color: #1a4a38;
+  margin-bottom: 1rem;
+}
+
+.hero-section p {
+  font-size: 1.2rem;
+  max-width: 800px;
+  margin: 0 auto 2rem auto;
+  color: #555;
+}
+
+.cta-button {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.cta-button:hover {
+  background-color: #219653;
+}
+
+.features-section {
+  display: flex;
+  justify-content: space-around;
+  padding: 3rem 2rem;
+  background-color: white;
+}
+
+.feature-card {
+  text-align: center;
+  max-width: 300px;
+}
+
+.feature-card h3 {
+  color: #1a4a38;
+}
+
+.home-footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: #1a4a38;
+  color: white;
+  margin-top: 2rem;
+}
