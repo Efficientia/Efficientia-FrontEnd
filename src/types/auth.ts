@@ -1,37 +1,105 @@
-// export type TipoUsuario = 'MOTORISTA' | 'ANALISTA' | 'ADM_EMPRESA' | 'SISTEMA_DEV'; // Exemplo, ajuste conforme seu Enum Java
+import type { EmpresaResponse } from './empresa';
+
+export type TipoUsuario =
+  | 'MOTORISTA'
+  | 'ANALISTA'
+  | 'MANOBRISTA'
+  | 'CURRALEIRO'
+  | 'PECUARISTA'
+  | 'ADMINISTRADOR'
+  | 'FUNCIONARIO_FRIBOI';
 
 export interface UsuarioResponse {
-  id: number;              // No Java: Integer
-  tipo: string;            // No Java: TipoUsuario (Enum convertido pra string no JSON)
-  cpf: string;             // No Java: String
-  codigoInterno: string;   // No Java: String
-  nome: string;            // No Java: String
-  dataNascimento: string;  // No Java: LocalDate (no JSON viaja no formato "YYYY-MM-DD")
-  email: string;           // No Java: String
-  telefone: string;        // No Java: String
-  ativo: boolean;          // No Java: Boolean
-}
-
-export interface LoginRequest {
-  cpf: string;             // No Java: String
-  email: string;           // No Java: String
-  senha: string;           // No Java: String
-  codigoEmpresa: string;   // No Java: String
-}
-
-export interface LoginResponse {
-  token: string;           // No Java: String
-  tokenType: string;       // No Java: String
-  usuario: UsuarioResponse; // Referência à interface acima
-}
-
-export interface SignupRequest {
-  tipo: string;
+  id: number;
+  tipo: TipoUsuario | string;
   cpf: string;
   codigoInterno: string;
   nome: string;
-  dataNascimento: string;
+  dataNascimento?: string;
   email: string;
-  telefone: string;
+  telefone?: string;
+  ativo: boolean;
+}
+
+export interface LoginRequest {
+  cpf?: string;
+  email?: string;
   senha: string;
+  codigoEmpresa: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  tokenType: string;
+  usuario: UsuarioResponse;
+}
+
+export interface SignupRequest {
+  tipo: TipoUsuario | string;
+  cpf: string;
+  codigoInterno: string;
+  nome: string;
+  dataNascimento?: string;
+  email: string;
+  telefone?: string;
+  senha: string;
+}
+
+export interface AdminResponse {
+  id: number;
+  empresaId: number;
+  codigoEmpresa: string;
+  cnpjEmpresa?: string;
+  nome: string;
+  email: string;
+  cpf?: string;
+  telefone?: string;
+  cargo?: string;
+  ativo: boolean;
+  criadoEm?: string;
+}
+
+export interface CriarPrimeiroAdminRequest {
+  empresaId?: number;
+  codigoEmpresa?: string;
+  cnpj?: string;
+  nome: string;
+  email: string;
+  senha: string;
+  cpf?: string;
+  telefone?: string;
+  cargo?: string;
+}
+
+export interface CriarAdminRequest {
+  nome: string;
+  email: string;
+  senha: string;
+  cpf?: string;
+  telefone?: string;
+  cargo?: string;
+}
+
+export interface LoginAdminRequest {
+  email: string;
+  senha: string;
+  codigoEmpresa?: string;
+  cnpj?: string;
+}
+
+export interface LoginAdminResponse {
+  token: string;
+  tokenType: string;
+  expiraEmSegundos?: number;
+  admin: AdminResponse;
+  empresa: EmpresaResponse;
+  mensagem: string;
+  roles?: string[];
+}
+
+export interface AuthSession {
+  token: string;
+  user: AdminResponse | UsuarioResponse;
+  empresa?: EmpresaResponse | null;
+  roles: string[];
 }
