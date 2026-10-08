@@ -1,0 +1,8 @@
+export const DASHBOARD_ALLOWED_ROLES = [
+  'ANALISTA',
+  'ADMIN',
+  'ADMINISTRADOR',
+  'ADM_EMPRESA',
+  'FUNCIONARIO_FRIBOI',
+  'SISTEMA_DEV',
+] as const;

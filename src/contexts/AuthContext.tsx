@@ -96,31 +96,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('efficientia:unauthorized', handleUnauthorized);
   }, [logout]);
 
-  const loginFuncionario = useCallback(async (dados: LoginRequest): Promise<void> => {
+  const loginFuncionario = useCallback(async (dados: LoginRequest): Promise<string[]> => {
     dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginUsuario(dados);
+      const roles = [response.usuario.tipo.toUpperCase()];
       persistSession({
         token: response.token,
         user: response.usuario,
         empresa: null,
-        roles: [response.usuario.tipo.toUpperCase()],
+        roles,
       });
+      return roles;
     } finally {
       dispatch({ type: 'requestFinished' });
     }
   }, [persistSession]);
 
-  const loginAdmin = useCallback(async (dados: LoginAdminRequest): Promise<void> => {
+  const loginAdmin = useCallback(async (dados: LoginAdminRequest): Promise<string[]> => {
     dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginAdmin(dados);
+      const roles = response.roles;
       persistSession({
         token: response.token,
         user: response.admin,
         empresa: response.empresa,
-        roles: response.roles,
+        roles,
       });
+      return roles;
     } finally {
       dispatch({ type: 'requestFinished' });
     }
