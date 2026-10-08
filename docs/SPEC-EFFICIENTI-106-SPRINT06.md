@@ -53,7 +53,7 @@ Verificação reproduzível: `npm run build` e `npm run lint`; o build de produ�
 
 O link “Pular para o conteúdo principal” é o primeiro controle da aplicação e leva a `main#main-content`. Todas as páginas, o fallback lazy e o estado de carregamento protegido expõem esse landmark com foco programático. `RouteFocusManager` move o foco ao conteúdo após navegação; `PrivateRoute` refaz o foco quando termina de restaurar uma sessão privada.
 
-O formulário de login agrupa métodos com `fieldset`/`legend`, rotula os campos e mostra foco visível. A página de testes associa rótulos e descrições aos campos de CPF e placa.
+O formulário de login agrupa métodos com `fieldset`/`legend`, rotula os campos e mostra foco visível.
 
 Verificação: `npm run build`, `npm run lint` e smoke SSR da tela de login confirmando landmark, campos de funcionário/administrador e renderização segura de texto.
 
@@ -68,3 +68,21 @@ Verificação: `npm run build`, `npm run lint` e smoke SSR com respostas de pág
 `reportFiltersReducer` controla busca textual e status sem mutação; `filterReports` compara GTA, nota fiscal, embarque, status e IDs. `useMemo` recalcula resultados somente quando a página ou os filtros mudam. Como o contrato atual da API só aceita `pagina` e `tamanho`, os filtros são explicitamente locais à página carregada e não enviam parâmetros não suportados.
 
 Verificação: `npm run build`, `npm run lint` e smoke Node cobrindo busca sem diferenciar maiúsculas, filtro exato de status, combinação dos filtros e reset.
+
+## EFFICIENTI-330 — Semântica de estado e feedback
+
+As páginas de erro e de carregamento usam landmarks `main`; estados transitórios anunciam carregamento com `role="status"`, e falhas de requisição são apresentadas como alertas acessíveis.
+
+Verificação: `npm run build` e `npm run lint`.
+
+## EFFICIENTI-390 — Workbench de testes da API
+
+A tela de desenvolvimento consulta `GET /api/v1/status` e oferece um login operacional real pela API configurada, além de exibir a URL-base ativa. Ela não mostra o token nem usa um endpoint simulado; pode ser substituída sem alterar os serviços de produção.
+
+Verificação: smoke SSR confirmou renderização das áreas de status, login e validação.
+
+## EFFICIENTI-391 — Validação de CPF e placa
+
+`isValidCpfFormat` exige 11 dígitos e aceita pontuação de apresentação; `isValidBrazilianLicensePlate` aceita os formatos brasileiros antigo e Mercosul. O workbench comunica entradas inválidas por texto associado aos controles e região de status.
+
+Verificação: smoke Node executado com sete entradas válidas/inválidas de CPF e placa.
