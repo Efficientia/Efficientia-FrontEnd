@@ -22,6 +22,5 @@ export interface AuthContextData {
   hasRole: (role: string) => boolean;
 }
 
-export const ROLES_STORAGE_KEY = '@efficientia:roles';
 
 export const AuthContext = createContext<AuthContextData | undefined>(undefined);
