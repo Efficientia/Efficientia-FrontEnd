@@ -1,5 +1,14 @@
 # Especificação Técnica — Sprint EFFICIENTI-106
 
+## EFFICIENTI-334 — Estado de autenticação com Context API e reducer
+
+`AuthProvider` expõe a sessão por Context API e centraliza as transições em `authReducer`, com estado tipado para token, usuário, empresa, papéis e carregamento. Restauração, início/fim de requisição, autenticação concluída e logout são ações explícitas; os eventos `401` limpam a sessão pelo mesmo fluxo de logout.
+
+`useAuth` consome o contexto. Callbacks estáveis mantêm as ações previsíveis, e `useMemo` mantém o valor do provider estável enquanto o estado e as ações não mudam.
+
+Verificação reproduzível: `npm run build` e `npm run lint`.
+
+
 ## EFFICIENTI-335 — Hook tipado de leitura cancelável
 
 `src/hooks/useFetchData.ts` executa uma consulta assíncrona tipada e retorna `data`, `error`, `isLoading`, `isSuccess`, `isError` e `refetch`. O erro mantém a classe `ApiRequestError`, incluindo status HTTP e erros por campo do Problem Detail da API.
