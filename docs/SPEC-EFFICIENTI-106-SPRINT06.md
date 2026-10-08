@@ -56,3 +56,9 @@ O link “Pular para o conteúdo principal” é o primeiro controle da aplicaç
 O formulário de login agrupa métodos com `fieldset`/`legend`, rotula os campos e mostra foco visível. A página de testes associa rótulos e descrições aos campos de CPF e placa.
 
 Verificação: `npm run build`, `npm run lint` e smoke SSR da tela de login confirmando landmark, campos de funcionário/administrador e renderização segura de texto.
+
+## EFFICIENTI-394 — Dashboard com relatórios paginados
+
+`/dashboard` consome `relatorioService.listar(pagina, 20, signal)` via `useFetchData`. A tabela usa os campos reais do DTO (GTA, nota fiscal, embarque, status, motoristaId e fazendaId); total, paginação, carregamento, erro com repetição e resultado vazio refletem a resposta da API. Não há KPIs nem dados de demonstração: o backend atual não expõe agregados de dashboard.
+
+Verificação: `npm run build`, `npm run lint` e smoke SSR com respostas de página, lista vazia e erro/repetição.
