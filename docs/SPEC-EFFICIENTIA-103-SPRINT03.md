@@ -22,7 +22,7 @@ Esta sprint cumpre as subtasks associadas ao épico **EFFICIENTI-103**:
 | **EFFICIENTI-388** | AuthContext para Token JWT e Permissões | `src/contexts/AuthContext.tsx` e hook `useAuth()`, centralizando o estado de sessão, token JWT, dados do usuário/empresa e verificação de roles. |
 | **EFFICIENTI-389** | Componente Global de Loading e Erros | `src/components/Feedback/LoadingSpinner.tsx` e `ErrorMessage.tsx` com conformidade de acessibilidade (ARIA live regions e roles). |
 | **EFFICIENTI-327** | Gerenciar estado e efeitos sem mutação e com dependências corretas | Imutabilidade estrita no `AuthContext` e `useAsyncAction`, garantindo cancelamento seguro e sem vazamento de memória em desmontagem. |
-| **EFFICIENTI-328** | Renderizar listas dinâmicas com chaves estáveis | Contratos tipados em `src/types/dashboard.ts` fornecendo identificadores únicos imutáveis (`id`, `codigoViagem`) para a Visão Geral. |
+| **EFFICIENTI-328** | Renderizar listas dinâmicas com chaves estáveis | A listagem de relatórios usa o identificador persistente `id` do DTO tipado (`src/types/relatorio.ts`) como chave React. |
 
 ---
 
@@ -50,35 +50,21 @@ O `AuthProvider` envolve a árvore de roteamento no `App.tsx`, distribuindo o es
 ```
 
 ### 3.2. Ciclo de Vida da Sessão
-1. **Inicialização:** Ao carregar a página, o `AuthContext` busca os dados gravados no `localStorage` (`@efficientia:token`, `@efficientia:user`, `@efficientia:empresa`). A flag `isLoading` permanece `true` até a checagem ser concluída, evitando que o `PrivateRoute` redirecione prematuramente para `/login`.
+1. **Inicialização:** O `AuthContext` restaura o token de `@efficientia:v1:token` e o perfil versionado de `@efficientia:v1:profile`. `isLoading` permanece `true` durante a restauração, evitando redirecionamento prematuro do `PrivateRoute`.
 2. **Autenticação:**
    - Funcionários/Analistas executam `loginFuncionario(dados)`, populando o perfil operacional e derivando as permissões baseadas no enum `TipoUsuario`.
-   - Administradores executam `loginAdmin(dados)` ou `cadastrarPrimeiroAdmin(dados)`, obtendo autoridades `ROLE_ADMIN` e `ROLE_ADMINISTRADOR`.
+   - Administradores executam `loginAdmin(dados)` ou `cadastrarPrimeiroAdmin(dados)`; o Context preserva os papéis devolvidos pela API.
 3. **Revogação / Expiração (HTTP 401):** O interceptor do Axios dispara um evento global `efficientia:unauthorized`. O `AuthContext` captura o evento de forma passiva, limpa os registros locais e redefine o estado sem recarregar forçadamente o navegador.
 
 ---
 
-## 4. Estrutura de Dados da Visão Geral (Dashboard)
+## 4. Dashboard de relatórios paginados
 
-Para alimentar a tela principal (`/dashboard`) mantendo total compatibilidade com o layout de design do projeto:
+`/dashboard` consulta `GET /api/v1/relatorios-viagem?pagina={pagina}&tamanho={tamanho}` por `relatorioService.listar`. A resposta usa `itens`, `pagina`, `tamanho`, `total` e `totalPaginas`, conforme `RelatorioViagemPageResponse`.
 
-### 4.1. Indicadores Chave de Performance (KPIs)
-- **Diários de Viagem:** Total acumulado na semana, quantidade de diários pendentes de homologação e variação percentual comparativa.
-- **Transporte de Bovinos:** Volume de animais transportados, índice de mortes em rota e variações semanais.
-- **Taxa de Mortalidade:** Percentual calculado em relação ao total embarcado com comparativo contra a meta corporativa interna ($< 0,5\%$).
-- **Índice de Anomalias:** Ocorrências segregadas nas etapas de embarque e desembarque.
+A tabela apresenta somente campos presentes no DTO da API: GTA, nota fiscal, data de embarque, status, ID do motorista e ID da fazenda. A tela representa carregamento, erro/repetição, resultado vazio, total e navegação paginada.
 
-### 4.2. Gráficos de Tendência Diária
-Distribuição temporal contínua de domingo a sábado cobrindo:
-1. Volume diário de desembarque.
-2. Volume diário de embarque.
-3. Mortes registradas por dia.
-4. Anomalias categorizadas por etapa operacional.
-
-### 4.3. Listagens Operacionais
-- **Fila de Análise:** Diários em espera de parecer do Analista com dados da viagem (`RR-2041`), número da GTA (`MS-0398471`), motorista responsável e trecho de rota.
-- **Alertas Operacionais:** Avisos com categorização de criticidade (`baixa`, `media`, `alta`, `critica`) e classificação por domínio (manutenção veicular, CNH, sanidade animal e inspeções periódicas).
-- **Rotas em Andamento:** Monitoramento de caminhões em trânsito com taxa de progresso visual de 0 a 100%.
+A API atual não fornece um endpoint agregado para KPIs, gráficos de tendência, alertas ou rotas em andamento. A interface não inventa esses valores nem usa fallback/mock de relatórios.
 
 ---
 
@@ -99,7 +85,7 @@ Distribuição temporal contínua de domingo a sábado cobrindo:
 
 - [x] O `AuthContext` restaura a sessão automaticamente após recarregamento (F5) sem flicker de rota.
 - [x] O `PrivateRoute` bloqueia usuários não autenticados e restringe o acesso por lista de perfis permitidos (`allowedRoles`).
-- [x] Todos os contratos da Visão Geral possuem tipagem estrita (`src/types/dashboard.ts`).
-- [x] O serviço `dashboardService.ts` provê dados estruturados com fallback resiliente para boot da aplicação.
+- [x] A resposta paginada e os relatórios usam DTOs tipados alinhados ao contrato (`src/types/relatorio.ts`).
+- [x] O dashboard lê páginas reais via `relatorioService.listar`, sem dataset falso, com estados de carregamento, erro, vazio e paginação.
 - [x] Os componentes de feedback atendem às diretrizes de acessibilidade WCAG AA.
 - [x] A compilação TypeScript e o build de produção Vite passam com zero advertências e zero erros.
