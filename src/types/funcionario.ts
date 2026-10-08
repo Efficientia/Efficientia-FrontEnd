@@ -4,14 +4,14 @@ export interface CriarFuncionarioEmpresaRequest {
   tipo: TipoUsuario;
   cpf: string;
   nome: string;
-  dataNascimento?: string;
+  dataNascimento?: string | null;
   email: string;
   telefone: string;
   senha: string;
-  cargo?: string;
-  cnhNumero?: string;
-  categoriaCnh?: string;
-  dataVencimentoCnh?: string;
+  cargo?: string | null;
+  cnhNumero?: string | null;
+  categoriaCnh?: string | null;
+  dataVencimentoCnh?: string | null;
 }
 
 export interface FuncionarioEmpresaResponse {
@@ -23,7 +23,7 @@ export interface FuncionarioEmpresaResponse {
   cpf: string;
   email: string;
   telefone: string;
-  cargo?: string;
-  ativo: boolean;
-  criadoEm?: string;
+  cargo: string | null;
+  ativo: boolean | null;
+  criadoEm: string | null;
 }
