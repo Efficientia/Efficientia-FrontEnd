@@ -6,3 +6,4 @@ export * from './documento';
 export * from './dashboard';
 export * from './relatorio';
 export * from './frota';
+export * from './api';
