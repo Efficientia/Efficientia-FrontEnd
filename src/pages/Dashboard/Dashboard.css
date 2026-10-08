@@ -1,0 +1,132 @@
+.dashboard-page {
+  min-height: 100vh;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  color: #25332b;
+  font-family: Arial, sans-serif;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header h1 {
+  margin: 0.2rem 0 0.5rem;
+  color: #1a4a38;
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #53645a;
+  line-height: 1.5;
+}
+
+.dashboard-eyebrow {
+  color: #1a4a38 !important;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-header button,
+.dashboard-error button,
+.dashboard-pagination button {
+  min-height: 2.6rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid #1a4a38;
+  border-radius: 0.4rem;
+  background: #1a4a38;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.dashboard-header button:disabled,
+.dashboard-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dashboard-page button:focus-visible {
+  outline: 3px solid #218553;
+  outline-offset: 3px;
+}
+
+.dashboard-total {
+  margin: 0 0 1rem;
+  font-weight: 700;
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #dce7de;
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.dashboard-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.dashboard-table-wrap caption {
+  padding: 1rem;
+  color: #53645a;
+  text-align: left;
+}
+
+.dashboard-table-wrap th,
+.dashboard-table-wrap td {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid #e4ece6;
+  white-space: nowrap;
+}
+
+.dashboard-table-wrap th {
+  background: #f4f9f4;
+  color: #1a4a38;
+  font-size: 0.9rem;
+}
+
+.dashboard-status {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #edf5ef;
+  color: #1a4a38;
+  font-size: 0.9rem;
+}
+
+.dashboard-error,
+.dashboard-empty {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff0f0;
+  color: #8c2020;
+}
+
+.dashboard-empty {
+  background: #f4f9f4;
+  color: #53645a;
+}
+
+.dashboard-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .dashboard-header {
+    flex-direction: column;
+  }
+}
