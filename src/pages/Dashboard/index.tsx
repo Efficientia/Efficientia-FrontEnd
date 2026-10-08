@@ -1,9 +1,8 @@
-
 export function Dashboard() {
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Dashboard Privado</h2>
+    <main id="main-content" tabIndex={-1} style={{ padding: '2rem' }}>
+      <h1>Dashboard Privado</h1>
       <p>Se você está vendo isso, você passou pela validação do PrivateRoute!</p>
-    </div>
+    </main>
   );
 }

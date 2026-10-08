@@ -40,7 +40,7 @@ export function ApiTestWorkbench() {
   };
 
   return (
-    <main className="api-workbench">
+    <main id="main-content" className="api-workbench" tabIndex={-1}>
       <header className="api-workbench__header">
         <p className="api-workbench__eyebrow">Ambiente de desenvolvimento</p>
         <h1>Testes da API Efficientia</h1>
