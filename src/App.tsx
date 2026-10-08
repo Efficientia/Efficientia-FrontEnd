@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { NotFound } from './pages/NotFound';
 import { PrivateRoute } from './components/PrivateRoute';
 import { ApiTestWorkbench } from './pages/ApiTestWorkbench';
+import { DASHBOARD_ALLOWED_ROLES } from './constants/auth';
 
 function App() {
   return (
@@ -20,14 +21,7 @@ function App() {
           <Route
             element={
               <PrivateRoute
-                allowedRoles={[
-                  'ANALISTA',
-                  'ADMIN',
-                  'ADMINISTRADOR',
-                  'ADM_EMPRESA',
-                  'FUNCIONARIO_FRIBOI',
-                  'SISTEMA_DEV',
-                ]}
+                allowedRoles={[...DASHBOARD_ALLOWED_ROLES]}
               />
             }
           >

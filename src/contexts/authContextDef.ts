@@ -15,8 +15,8 @@ export interface AuthContextData {
   roles: string[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  loginFuncionario: (dados: LoginRequest) => Promise<void>;
-  loginAdmin: (dados: LoginAdminRequest) => Promise<void>;
+  loginFuncionario: (dados: LoginRequest) => Promise<string[]>;
+  loginAdmin: (dados: LoginAdminRequest) => Promise<string[]>;
   cadastrarPrimeiroAdmin: (dados: CriarPrimeiroAdminRequest) => Promise<void>;
   logout: () => void;
   hasRole: (role: string) => boolean;

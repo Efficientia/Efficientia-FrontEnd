@@ -17,6 +17,14 @@ Somente `AuthContext` persiste sessões autenticadas. `authService` retorna os D
 
 Verificação reproduzível: `npm run build` e `npm run lint`. Smoke executado com Node 22 confirmou remoção das chaves legadas, round-trip da sessão v1 e limpeza de perfil JSON corrompido.
 
+## EFFICIENTI-338 — Formulários de autenticação e rotas protegidas
+
+`/login` usa os contratos atuais da API para autenticação de funcionário (CPF, e-mail, senha e código da empresa) e administrador (identificador, senha e código/CNPJ opcionais). Os métodos do Context retornam papéis após persistir a sessão; o redirecionamento ao painel usa a mesma lista central de papéis permitidos que `PrivateRoute`.
+
+Erros HTTP e erros por campo são exibidos como texto React escapado; nenhum conteúdo da API é interpretado como HTML. A página de teste permanece somente em desenvolvimento (`/dev/api-test`).
+
+Verificação reproduzível: `npm run build` e `npm run lint`.
+
 ## EFFICIENTI-335 — Hook tipado de leitura cancelável
 
 `src/hooks/useFetchData.ts` executa uma consulta assíncrona tipada e retorna `data`, `error`, `isLoading`, `isSuccess`, `isError` e `refetch`. O erro mantém a classe `ApiRequestError`, incluindo status HTTP e erros por campo do Problem Detail da API.
