@@ -48,3 +48,11 @@ Verificação reproduzível: `npm run build` e `npm run lint`.
 As páginas públicas, privadas e 404 são carregadas com `React.lazy`; `Suspense` apresenta um `<main aria-busy>` e mensagem `role="status"` enquanto o módulo chega. A tela `/dev/api-test` só cria o import lazy em desenvolvimento e não é emitida no bundle de produção.
 
 Verificação reproduzível: `npm run build` e `npm run lint`; o build de produção gerou chunks por página e não incluiu chunk de `ApiTestWorkbench`.
+
+## EFFICIENTI-339 — Teclado, foco e landmarks
+
+O link “Pular para o conteúdo principal” é o primeiro controle da aplicação e leva a `main#main-content`. Todas as páginas, o fallback lazy e o estado de carregamento protegido expõem esse landmark com foco programático. `RouteFocusManager` move o foco ao conteúdo após navegação; `PrivateRoute` refaz o foco quando termina de restaurar uma sessão privada.
+
+O formulário de login agrupa métodos com `fieldset`/`legend`, rotula os campos e mostra foco visível. A página de testes associa rótulos e descrições aos campos de CPF e placa.
+
+Verificação: `npm run build`, `npm run lint` e smoke SSR da tela de login confirmando landmark, campos de funcionário/administrador e renderização segura de texto.

@@ -64,7 +64,7 @@ export function Login() {
   }
 
   return (
-    <main className="login-page" aria-labelledby="login-title">
+    <main id="main-content" className="login-page" aria-labelledby="login-title" tabIndex={-1}>
       <section className="login-card">
         <Link className="login-back-link" to="/">Voltar ao início</Link>
         <h1 id="login-title">Acessar Efficientia</h1>
