@@ -1,4 +1,5 @@
-import { apiClient, removeStoredToken, setStoredToken } from './api/client';
+import { apiClient } from './api/client';
+import { clearStoredAuthSession } from './api/storage';
 import type {
   LoginRequest,
   LoginResponse,
@@ -21,9 +22,6 @@ export const authService = {
    */
   async loginUsuario(dados: LoginRequest): Promise<LoginResponse> {
     const { data } = await apiClient.post<LoginResponse>('/api/v1/auth/login', dados);
-    if (data.token) {
-      setStoredToken(data.token);
-    }
     return data;
   },
 
@@ -43,9 +41,6 @@ export const authService = {
    */
   async loginEmpresa(dados: LoginEmpresaRequest): Promise<LoginEmpresaResponse> {
     const { data } = await apiClient.post<LoginEmpresaResponse>('/api/v1/auth/empresa/login', dados);
-    if (data.token) {
-      setStoredToken(data.token);
-    }
     return data;
   },
 
@@ -56,9 +51,6 @@ export const authService = {
    */
   async cadastrarPrimeiroAdmin(dados: CriarPrimeiroAdminRequest): Promise<LoginAdminResponse> {
     const { data } = await apiClient.post<LoginAdminResponse>('/api/v1/auth/adm/primeiro-acesso', dados);
-    if (data.token) {
-      setStoredToken(data.token);
-    }
     return data;
   },
 
@@ -68,9 +60,6 @@ export const authService = {
    */
   async loginAdmin(dados: LoginAdminRequest): Promise<LoginAdminResponse> {
     const { data } = await apiClient.post<LoginAdminResponse>('/api/v1/auth/adm/login', dados);
-    if (data.token) {
-      setStoredToken(data.token);
-    }
     return data;
   },
 
@@ -78,7 +67,7 @@ export const authService = {
    * Realiza o encerramento da sessão local.
    */
   logout(): void {
-    removeStoredToken();
+    clearStoredAuthSession();
   },
 
   /**

@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import {
   authService,
-  USER_STORAGE_KEY,
-  EMPRESA_STORAGE_KEY,
-  getStoredToken,
-  setStoredToken,
-  removeStoredToken,
+  clearStoredAuthSession,
+  getStoredAuthSession,
+  writeStoredAuthSession,
 } from '../services';
 import type {
   AdminResponse,
@@ -17,7 +15,6 @@ import type {
 import type { EmpresaResponse } from '../types/empresa';
 import {
   AuthContext,
-  ROLES_STORAGE_KEY,
   type AuthContextData,
 } from './authContextDef';
 
@@ -29,10 +26,13 @@ interface AuthState {
   isLoading: boolean;
 }
 
+type AuthSessionState = Omit<AuthState, 'isLoading'>;
+type AuthenticatedSession = Omit<AuthSessionState, 'token'> & { token: string };
+
 type AuthAction =
-  | { type: 'restore'; session: Omit<AuthState, 'isLoading'> | null }
+  | { type: 'restore'; session: AuthSessionState | null }
   | { type: 'requestStarted' }
-  | { type: 'authenticated'; session: Omit<AuthState, 'isLoading'> }
+  | { type: 'authenticated'; session: AuthenticatedSession }
   | { type: 'requestFinished' }
   | { type: 'loggedOut' };
 
@@ -47,7 +47,7 @@ const initialAuthState: AuthState = {
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'restore':
-      return { ...(action.session ?? { token: null, user: null, empresa: null, roles: [] }), isLoading: false };
+      return { ...(action.session ?? initialAuthState), isLoading: false };
     case 'requestStarted':
       return { ...state, isLoading: true };
     case 'authenticated':
@@ -58,42 +58,36 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { ...initialAuthState, isLoading: false };
   }
 }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
   const logout = useCallback((): void => {
     dispatch({ type: 'loggedOut' });
-    localStorage.removeItem(ROLES_STORAGE_KEY);
     authService.logout();
+  }, []);
+
+  const persistSession = useCallback((session: AuthenticatedSession): void => {
+    writeStoredAuthSession(session);
+    dispatch({ type: 'authenticated', session });
   }, []);
 
   useEffect(() => {
     try {
-      const token = getStoredToken();
-      if (!token) {
-        dispatch({ type: 'restore', session: null });
-      } else {
-        const userJson = localStorage.getItem(USER_STORAGE_KEY);
-        const empresaJson = localStorage.getItem(EMPRESA_STORAGE_KEY);
-        const rolesJson = localStorage.getItem(ROLES_STORAGE_KEY);
-        const rolesValue: unknown = rolesJson ? JSON.parse(rolesJson) : [];
-        const roles = Array.isArray(rolesValue)
-          ? rolesValue.filter((role: unknown): role is string => typeof role === 'string')
-          : [];
-
-        dispatch({
-          type: 'restore',
-          session: {
-            token,
-            user: userJson ? JSON.parse(userJson) as AdminResponse | UsuarioResponse : null,
-            empresa: empresaJson ? JSON.parse(empresaJson) as EmpresaResponse : null,
-            roles,
-          },
-        });
-      }
+      const storedSession = getStoredAuthSession();
+      dispatch({
+        type: 'restore',
+        session: storedSession
+          ? {
+              token: storedSession.token,
+              user: storedSession.user,
+              empresa: storedSession.empresa,
+              roles: storedSession.roles,
+            }
+          : null,
+      });
     } catch {
-      removeStoredToken();
-      localStorage.removeItem(ROLES_STORAGE_KEY);
+      clearStoredAuthSession();
       dispatch({ type: 'restore', session: null });
     }
 
@@ -106,61 +100,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginUsuario(dados);
-      const session = {
+      persistSession({
         token: response.token,
         user: response.usuario,
         empresa: null,
         roles: [response.usuario.tipo.toUpperCase()],
-      };
-      dispatch({ type: 'authenticated', session });
-      setStoredToken(session.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
-      localStorage.removeItem(EMPRESA_STORAGE_KEY);
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
+      });
     } finally {
       dispatch({ type: 'requestFinished' });
     }
-  }, []);
+  }, [persistSession]);
 
   const loginAdmin = useCallback(async (dados: LoginAdminRequest): Promise<void> => {
     dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginAdmin(dados);
-      const session = {
+      persistSession({
         token: response.token,
         user: response.admin,
         empresa: response.empresa,
         roles: response.roles,
-      };
-      dispatch({ type: 'authenticated', session });
-      setStoredToken(session.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
-      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(session.empresa));
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
+      });
     } finally {
       dispatch({ type: 'requestFinished' });
     }
-  }, []);
+  }, [persistSession]);
 
   const cadastrarPrimeiroAdmin = useCallback(async (dados: CriarPrimeiroAdminRequest): Promise<void> => {
     dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.cadastrarPrimeiroAdmin(dados);
-      const session = {
+      persistSession({
         token: response.token,
         user: response.admin,
         empresa: response.empresa,
         roles: response.roles,
-      };
-      dispatch({ type: 'authenticated', session });
-      setStoredToken(session.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
-      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(session.empresa));
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
+      });
     } finally {
       dispatch({ type: 'requestFinished' });
     }
-  }, []);
+  }, [persistSession]);
 
   const hasRole = useCallback(
     (role: string): boolean => state.roles.includes(role.toUpperCase()),
