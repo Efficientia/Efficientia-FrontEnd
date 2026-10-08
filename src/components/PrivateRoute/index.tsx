@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 
 interface PrivateRouteProps {
@@ -7,12 +8,19 @@ interface PrivateRouteProps {
 
 export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   const { isAuthenticated, isLoading, roles } = useAuth();
+  useEffect(() => {
+    if (isLoading) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById('main-content')?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isLoading]);
+
 
   // Enquanto restaura a sessão armazenada, evita redirecionamentos falsos
   if (isLoading) {
     return (
-      <main
-        aria-busy="true"
+      <main id="main-content" tabIndex={-1} aria-busy="true"
         style={{
           display: 'flex',
           justifyContent: 'center',

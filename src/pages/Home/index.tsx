@@ -13,7 +13,7 @@ export function Home() {
         </nav>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="hero-section" aria-labelledby="hero-title">
           <h2 id="hero-title">Transporte Bovino Sustentável e Eficiente</h2>
           <p>
