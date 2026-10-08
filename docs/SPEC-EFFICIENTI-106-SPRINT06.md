@@ -62,3 +62,9 @@ Verificação: `npm run build`, `npm run lint` e smoke SSR da tela de login conf
 `/dashboard` consome `relatorioService.listar(pagina, 20, signal)` via `useFetchData`. A tabela usa os campos reais do DTO (GTA, nota fiscal, embarque, status, motoristaId e fazendaId); total, paginação, carregamento, erro com repetição e resultado vazio refletem a resposta da API. Não há KPIs nem dados de demonstração: o backend atual não expõe agregados de dashboard.
 
 Verificação: `npm run build`, `npm run lint` e smoke SSR com respostas de página, lista vazia e erro/repetição.
+
+## EFFICIENTI-395 — Filtros com useReducer
+
+`reportFiltersReducer` controla busca textual e status sem mutação; `filterReports` compara GTA, nota fiscal, embarque, status e IDs. `useMemo` recalcula resultados somente quando a página ou os filtros mudam. Como o contrato atual da API só aceita `pagina` e `tamanho`, os filtros são explicitamente locais à página carregada e não enviam parâmetros não suportados.
+
+Verificação: `npm run build`, `npm run lint` e smoke Node cobrindo busca sem diferenciar maiúsculas, filtro exato de status, combinação dos filtros e reset.
