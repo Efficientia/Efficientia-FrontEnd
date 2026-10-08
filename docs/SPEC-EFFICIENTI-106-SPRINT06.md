@@ -42,3 +42,9 @@ const { data, error, isLoading, refetch } = useFetchData(carregarRelatorios);
 A tela deve representar `isLoading` e `error` explicitamente; `refetch` repete a leitura com um novo sinal de cancelamento. Os serviços de relatórios, documentos, frota, cadastros e empresas aceitam `AbortSignal` nas consultas de leitura.
 
 Verificação reproduzível: `npm run build` e `npm run lint`.
+
+## EFFICIENTI-336 — Carregamento sob demanda das rotas
+
+As páginas públicas, privadas e 404 são carregadas com `React.lazy`; `Suspense` apresenta um `<main aria-busy>` e mensagem `role="status"` enquanto o módulo chega. A tela `/dev/api-test` só cria o import lazy em desenvolvimento e não é emitida no bundle de produção.
+
+Verificação reproduzível: `npm run build` e `npm run lint`; o build de produção gerou chunks por página e não incluiu chunk de `ApiTestWorkbench`.
