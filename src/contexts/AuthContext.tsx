@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import {
   authService,
   USER_STORAGE_KEY,
@@ -21,143 +21,161 @@ import {
   type AuthContextData,
 } from './authContextDef';
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<AdminResponse | UsuarioResponse | null>(null);
-  const [empresa, setEmpresa] = useState<EmpresaResponse | null>(null);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+interface AuthState {
+  token: string | null;
+  user: AdminResponse | UsuarioResponse | null;
+  empresa: EmpresaResponse | null;
+  roles: string[];
+  isLoading: boolean;
+}
+
+type AuthAction =
+  | { type: 'restore'; session: Omit<AuthState, 'isLoading'> | null }
+  | { type: 'requestStarted' }
+  | { type: 'authenticated'; session: Omit<AuthState, 'isLoading'> }
+  | { type: 'requestFinished' }
+  | { type: 'loggedOut' };
+
+const initialAuthState: AuthState = {
+  token: null,
+  user: null,
+  empresa: null,
+  roles: [],
+  isLoading: true,
+};
+
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'restore':
+      return { ...(action.session ?? { token: null, user: null, empresa: null, roles: [] }), isLoading: false };
+    case 'requestStarted':
+      return { ...state, isLoading: true };
+    case 'authenticated':
+      return { ...action.session, isLoading: false };
+    case 'requestFinished':
+      return { ...state, isLoading: false };
+    case 'loggedOut':
+      return { ...initialAuthState, isLoading: false };
+  }
+}
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
   const logout = useCallback((): void => {
-    setToken(null);
-    setUser(null);
-    setEmpresa(null);
-    setRoles([]);
+    dispatch({ type: 'loggedOut' });
     localStorage.removeItem(ROLES_STORAGE_KEY);
     authService.logout();
   }, []);
 
-  // Restaura a sessão armazenada no LocalStorage ao carregar a aplicação
   useEffect(() => {
-    function carregarSessaoArmazenada() {
-      try {
-        const storedToken = getStoredToken();
-        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-        const storedEmpresa = localStorage.getItem(EMPRESA_STORAGE_KEY);
-        const storedRoles = localStorage.getItem(ROLES_STORAGE_KEY);
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        dispatch({ type: 'restore', session: null });
+      } else {
+        const userJson = localStorage.getItem(USER_STORAGE_KEY);
+        const empresaJson = localStorage.getItem(EMPRESA_STORAGE_KEY);
+        const rolesJson = localStorage.getItem(ROLES_STORAGE_KEY);
+        const rolesValue: unknown = rolesJson ? JSON.parse(rolesJson) : [];
+        const roles = Array.isArray(rolesValue)
+          ? rolesValue.filter((role: unknown): role is string => typeof role === 'string')
+          : [];
 
-        if (storedToken) {
-          setToken(storedToken);
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          }
-          if (storedEmpresa) {
-            setEmpresa(JSON.parse(storedEmpresa));
-          }
-          if (storedRoles) {
-            setRoles(JSON.parse(storedRoles));
-          }
-        }
-      } catch {
-        removeStoredToken();
-      } finally {
-        setIsLoading(false);
+        dispatch({
+          type: 'restore',
+          session: {
+            token,
+            user: userJson ? JSON.parse(userJson) as AdminResponse | UsuarioResponse : null,
+            empresa: empresaJson ? JSON.parse(empresaJson) as EmpresaResponse : null,
+            roles,
+          },
+        });
       }
+    } catch {
+      removeStoredToken();
+      localStorage.removeItem(ROLES_STORAGE_KEY);
+      dispatch({ type: 'restore', session: null });
     }
 
-    carregarSessaoArmazenada();
-
-    // Ouve evento disparado pelo interceptor do Axios em caso de HTTP 401
-    const handleUnauthorized = () => {
-      logout();
-    };
-
+    const handleUnauthorized = () => logout();
     window.addEventListener('efficientia:unauthorized', handleUnauthorized);
-    return () => {
-      window.removeEventListener('efficientia:unauthorized', handleUnauthorized);
-    };
+    return () => window.removeEventListener('efficientia:unauthorized', handleUnauthorized);
   }, [logout]);
 
   const loginFuncionario = useCallback(async (dados: LoginRequest): Promise<void> => {
-    setIsLoading(true);
+    dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginUsuario(dados);
-      const userObj = response.usuario;
-      const userRoles = [userObj.tipo.toUpperCase()];
-
-      setToken(response.token);
-      setUser(userObj);
-      setRoles(userRoles);
-
-      setStoredToken(response.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userObj));
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(userRoles));
+      const session = {
+        token: response.token,
+        user: response.usuario,
+        empresa: null,
+        roles: [response.usuario.tipo.toUpperCase()],
+      };
+      dispatch({ type: 'authenticated', session });
+      setStoredToken(session.token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+      localStorage.removeItem(EMPRESA_STORAGE_KEY);
+      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
     } finally {
-      setIsLoading(false);
+      dispatch({ type: 'requestFinished' });
     }
   }, []);
 
   const loginAdmin = useCallback(async (dados: LoginAdminRequest): Promise<void> => {
-    setIsLoading(true);
+    dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.loginAdmin(dados);
-      const adminObj = response.admin;
-      const empresaObj = response.empresa;
-      const adminRoles = response.roles || ['ADMIN', 'ADMINISTRADOR'];
-
-      setToken(response.token);
-      setUser(adminObj);
-      setEmpresa(empresaObj);
-      setRoles(adminRoles);
-
-      setStoredToken(response.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(adminObj));
-      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(empresaObj));
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(adminRoles));
+      const session = {
+        token: response.token,
+        user: response.admin,
+        empresa: response.empresa,
+        roles: response.roles,
+      };
+      dispatch({ type: 'authenticated', session });
+      setStoredToken(session.token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(session.empresa));
+      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
     } finally {
-      setIsLoading(false);
+      dispatch({ type: 'requestFinished' });
     }
   }, []);
 
   const cadastrarPrimeiroAdmin = useCallback(async (dados: CriarPrimeiroAdminRequest): Promise<void> => {
-    setIsLoading(true);
+    dispatch({ type: 'requestStarted' });
     try {
       const response = await authService.cadastrarPrimeiroAdmin(dados);
-      const adminObj = response.admin;
-      const empresaObj = response.empresa;
-      const adminRoles = response.roles || ['ADMIN', 'ADMINISTRADOR'];
-
-      setToken(response.token);
-      setUser(adminObj);
-      setEmpresa(empresaObj);
-      setRoles(adminRoles);
-
-      setStoredToken(response.token);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(adminObj));
-      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(empresaObj));
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(adminRoles));
+      const session = {
+        token: response.token,
+        user: response.admin,
+        empresa: response.empresa,
+        roles: response.roles,
+      };
+      dispatch({ type: 'authenticated', session });
+      setStoredToken(session.token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+      localStorage.setItem(EMPRESA_STORAGE_KEY, JSON.stringify(session.empresa));
+      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(session.roles));
     } finally {
-      setIsLoading(false);
+      dispatch({ type: 'requestFinished' });
     }
   }, []);
 
-  const hasRole = useCallback((role: string): boolean => {
-    return roles.includes(role.toUpperCase());
-  }, [roles]);
+  const hasRole = useCallback(
+    (role: string): boolean => state.roles.includes(role.toUpperCase()),
+    [state.roles]
+  );
 
-  const value: AuthContextData = {
-    token,
-    user,
-    empresa,
-    roles,
-    isAuthenticated: Boolean(token),
-    isLoading,
+  const value = useMemo<AuthContextData>(() => ({
+    ...state,
+    isAuthenticated: Boolean(state.token),
     loginFuncionario,
     loginAdmin,
     cadastrarPrimeiroAdmin,
     logout,
     hasRole,
-  };
+  }), [state, loginFuncionario, loginAdmin, cadastrarPrimeiroAdmin, logout, hasRole]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
