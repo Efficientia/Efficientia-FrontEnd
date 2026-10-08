@@ -1,0 +1,131 @@
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  background: #f4f9f4;
+  color: #26332d;
+  font-family: Arial, sans-serif;
+}
+
+.login-card {
+  width: min(100%, 32rem);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  border: 1px solid #dce7de;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1rem 2.5rem rgb(26 74 56 / 10%);
+}
+
+.login-card h1 {
+  margin: 1.5rem 0 0.5rem;
+  color: #1a4a38;
+  font-size: clamp(1.7rem, 5vw, 2.2rem);
+}
+
+.login-description {
+  margin: 0 0 1.5rem;
+  color: #53645a;
+  line-height: 1.5;
+}
+
+.login-back-link {
+  color: #1a4a38;
+  font-weight: 700;
+  text-underline-offset: 0.2em;
+}
+
+.login-mode {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid #dce7de;
+  border-radius: 0.5rem;
+}
+
+.login-mode legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.login-mode label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.login-field {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  font-weight: 700;
+}
+
+.login-field span {
+  color: #53645a;
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
+.login-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #98a99d;
+  border-radius: 0.4rem;
+  color: inherit;
+  font: inherit;
+}
+
+.login-field input:focus-visible,
+.login-mode input:focus-visible,
+.login-back-link:focus-visible,
+.login-submit:focus-visible {
+  outline: 3px solid #218553;
+  outline-offset: 3px;
+}
+
+.login-feedback {
+  padding: 0.8rem 1rem;
+  border-radius: 0.4rem;
+  background: #edf5ef;
+  color: #1a4a38;
+  line-height: 1.5;
+}
+
+.login-feedback-error {
+  background: #fff0f0;
+  color: #8c2020;
+}
+
+.login-feedback p {
+  margin: 0;
+}
+
+.login-feedback ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.login-submit {
+  width: 100%;
+  min-height: 2.9rem;
+  margin-top: 0.75rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: #1a4a38;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #246b4f;
+}
+
+.login-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
