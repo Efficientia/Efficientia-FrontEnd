@@ -9,6 +9,14 @@
 Verificação reproduzível: `npm run build` e `npm run lint`.
 
 
+## EFFICIENTI-337 — Sessão versionada no localStorage
+
+`src/services/api/storage.ts` guarda o token em `@efficientia:v1:token` e o perfil versionado (`version: 1`, usuário, empresa e papéis) em `@efficientia:v1:profile`. `getStoredToken()` lê diretamente a chave do token, sem desserializar o perfil a cada requisição. A validação da sessão remove dados malformados; chaves antigas são eliminadas e nunca usadas como fallback.
+
+Somente `AuthContext` persiste sessões autenticadas. `authService` retorna os DTOs sem gravar credenciais como efeito colateral. `useCallback` mantém estáveis login/logout e `hasRole`; `useMemo` evita recriar o valor do Context quando estado e ações não mudam.
+
+Verificação reproduzível: `npm run build` e `npm run lint`. Smoke executado com Node 22 confirmou remoção das chaves legadas, round-trip da sessão v1 e limpeza de perfil JSON corrompido.
+
 ## EFFICIENTI-335 — Hook tipado de leitura cancelável
 
 `src/hooks/useFetchData.ts` executa uma consulta assíncrona tipada e retorna `data`, `error`, `isLoading`, `isSuccess`, `isError` e `refetch`. O erro mantém a classe `ApiRequestError`, incluindo status HTTP e erros por campo do Problem Detail da API.

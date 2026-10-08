@@ -1,38 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { normalizeApiError } from './errors';
-
-export const TOKEN_STORAGE_KEY = '@efficientia:token';
-export const USER_STORAGE_KEY = '@efficientia:user';
-export const EMPRESA_STORAGE_KEY = '@efficientia:empresa';
-
-
-export function getStoredToken(): string | null {
-  return (
-    localStorage.getItem(TOKEN_STORAGE_KEY) ||
-    localStorage.getItem('token') ||
-    sessionStorage.getItem(TOKEN_STORAGE_KEY)
-  );
-}
-
-export function setStoredToken(token: string, persistSessionOnly = false): void {
-  if (persistSessionOnly) {
-    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-  } else {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-  }
-  // Sincroniza chave de compatibilidade
-  localStorage.setItem('token', token);
-}
-
-export function removeStoredToken(): void {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem('token');
-  localStorage.removeItem(USER_STORAGE_KEY);
-  localStorage.removeItem(EMPRESA_STORAGE_KEY);
-  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-}
+import { getStoredToken } from './storage';
 /**
  * Obtém a URL base configurada para a API.
  */
