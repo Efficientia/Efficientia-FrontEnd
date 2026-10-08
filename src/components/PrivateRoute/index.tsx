@@ -11,18 +11,19 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   // Enquanto restaura a sessão armazenada, evita redirecionamentos falsos
   if (isLoading) {
     return (
-      <div
+      <main
+        aria-busy="true"
         style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '100vh',
           fontFamily: 'sans-serif',
-          color: '#555',
+          color: '#333',
         }}
       >
-        <p>Carregando sessão...</p>
-      </div>
+        <p role="status" aria-live="polite">Carregando sessão...</p>
+      </main>
     );
   }
 
