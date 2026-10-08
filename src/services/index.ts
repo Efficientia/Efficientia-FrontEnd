@@ -5,3 +5,5 @@ export * from './funcionarioService';
 export * from './cadastroBaseService';
 export * from './documentoService';
 export * from './dashboardService';
+export * from './relatorioService';
+export * from './caminhaoService';

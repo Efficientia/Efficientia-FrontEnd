@@ -1,101 +1,93 @@
 import { apiClient, getBaseUrl } from './api/client';
 import type {
-  CriarEmpresaRequest,
   AtualizarDadosEmpresaRequest,
+  CriarEmpresaRequest,
   EmpresaResponse,
   UploadLogoResponse,
 } from '../types/empresa';
 
-/**
- * Serviço responsável pelas operações de gestão e onboarding da Empresa Parceira.
- * Atende às especificações da Sprint 19 e EFFICIENTI-387.
- */
 export const empresaService = {
-  /**
-   * Registra uma nova empresa parceira e gera o código de acesso de 8 dígitos.
-   * Rota: POST /api/v1/empresas
-   */
-  async cadastrarEmpresa(dados: CriarEmpresaRequest): Promise<EmpresaResponse> {
-    const { data } = await apiClient.post<EmpresaResponse>('/api/v1/empresas', dados);
+  async cadastrarEmpresa(request: CriarEmpresaRequest, signal?: AbortSignal): Promise<EmpresaResponse> {
+    const { data } = await apiClient.post<EmpresaResponse>('/api/v1/empresas', request, { signal });
     return data;
   },
 
-  /**
-   * Atualiza os dados complementares da Etapa 1 de 3 (Endereço, contatos, dados legais).
-   * Rota: PUT /api/v1/empresas/{id}/dados-complementares
-   */
+  async listar(signal?: AbortSignal): Promise<EmpresaResponse[]> {
+    const { data } = await apiClient.get<EmpresaResponse[]>('/api/v1/empresas', { signal });
+    return data;
+  },
+
+  async buscarPorId(id: number, signal?: AbortSignal): Promise<EmpresaResponse> {
+    const { data } = await apiClient.get<EmpresaResponse>(`/api/v1/empresas/${id}`, { signal });
+    return data;
+  },
+
+  async buscarPorCodigo(codigo: string, signal?: AbortSignal): Promise<EmpresaResponse> {
+    const { data } = await apiClient.get<EmpresaResponse>(
+      `/api/v1/empresas/codigo/${encodeURIComponent(codigo)}`,
+      { signal }
+    );
+    return data;
+  },
+
+  async buscarPorCnpj(cnpj: string, signal?: AbortSignal): Promise<EmpresaResponse> {
+    const { data } = await apiClient.get<EmpresaResponse>(
+      `/api/v1/empresas/cnpj/${encodeURIComponent(cnpj)}`,
+      { signal }
+    );
+    return data;
+  },
+
   async atualizarDadosComplementares(
-    id: number | string,
-    dados: AtualizarDadosEmpresaRequest
+    id: number,
+    request: AtualizarDadosEmpresaRequest,
+    signal?: AbortSignal
   ): Promise<EmpresaResponse> {
     const { data } = await apiClient.put<EmpresaResponse>(
       `/api/v1/empresas/${id}/dados-complementares`,
-      dados
+      request,
+      { signal }
     );
     return data;
   },
 
-  /**
-   * Atualização direta dos dados da Etapa 1 utilizando apenas o código de 8 dígitos da empresa.
-   * Rota: PUT /api/v1/empresas/codigo/{codigo}
-   */
+  async atualizarDadosParcialmente(
+    id: number,
+    request: AtualizarDadosEmpresaRequest,
+    signal?: AbortSignal
+  ): Promise<EmpresaResponse> {
+    const { data } = await apiClient.patch<EmpresaResponse>(
+      `/api/v1/empresas/${id}/dados-complementares`,
+      request,
+      { signal }
+    );
+    return data;
+  },
+
   async atualizarEtapa1PorCodigo(
     codigo: string,
-    dados: AtualizarDadosEmpresaRequest
+    request: AtualizarDadosEmpresaRequest,
+    signal?: AbortSignal
   ): Promise<EmpresaResponse> {
     const { data } = await apiClient.put<EmpresaResponse>(
       `/api/v1/empresas/codigo/${encodeURIComponent(codigo)}`,
-      dados
+      request,
+      { signal }
     );
     return data;
   },
 
-  /**
-   * Realiza o upload do logotipo corporativo (PNG ou SVG até 5 MB).
-   * Rota: POST /api/v1/empresas/{id}/logo
-   */
-  async uploadLogo(empresaId: number | string, arquivo: File): Promise<UploadLogoResponse> {
+  async uploadLogo(empresaId: number, arquivo: File, signal?: AbortSignal): Promise<UploadLogoResponse> {
     const formData = new FormData();
     formData.append('arquivo', arquivo);
-
-    const { data } = await apiClient.post<UploadLogoResponse>(
-      `/api/v1/empresas/${empresaId}/logo`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
+    const { data } = await apiClient.post<UploadLogoResponse>(`/api/v1/empresas/${empresaId}/logo`, formData, {
+      signal,
+    });
     return data;
   },
 
-  /**
-   * Retorna a URL pública para visualização do logotipo da empresa.
-   * Rota pública: GET /api/v1/empresas/{id}/logo/conteudo
-   */
-  obterUrlLogo(empresaId: number | string): string {
+  obterUrlLogo(empresaId: number): string {
     return `${getBaseUrl()}/api/v1/empresas/${empresaId}/logo/conteudo`;
-  },
-
-  /**
-   * Consulta pública dos dados da empresa através do código de 8 dígitos.
-   * Rota: GET /api/v1/empresas/codigo/{codigo}
-   */
-  async buscarPorCodigo(codigo: string): Promise<EmpresaResponse> {
-    const { data } = await apiClient.get<EmpresaResponse>(
-      `/api/v1/empresas/codigo/${encodeURIComponent(codigo)}`
-    );
-    return data;
-  },
-
-  /**
-   * Consulta os dados cadastrais da empresa pelo ID numérico.
-   * Rota: GET /api/v1/empresas/{id}
-   */
-  async buscarPorId(id: number | string): Promise<EmpresaResponse> {
-    const { data } = await apiClient.get<EmpresaResponse>(`/api/v1/empresas/${id}`);
-    return data;
   },
 };
 

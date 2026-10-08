@@ -1,4 +1,5 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
+import { normalizeApiError } from './errors';
 
 export const TOKEN_STORAGE_KEY = '@efficientia:token';
 export const USER_STORAGE_KEY = '@efficientia:user';
@@ -36,7 +37,7 @@ export function removeStoredToken(): void {
  * Obtém a URL base configurada para a API.
  */
 export function getBaseUrl(): string {
-  const url = import.meta.env.VITE_API_URL || import.meta.env.VITE_BASE_URL || 'https://efficientia-api.onrender.com';
+  const url = import.meta.env.VITE_API_URL || 'https://efficientia-api.onrender.com';
   return url.replace(/\/+$/, '');
 }
 
@@ -47,7 +48,6 @@ export const apiClient = axios.create({
   baseURL: getBaseUrl(),
   timeout: 30000, // 30s de tolerância para cold starts do Render
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 });
@@ -75,20 +75,17 @@ apiClient.interceptors.request.use(
  */
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; detail?: string; title?: string }>) => {
-    if (error.response?.status === 401) {
-      // Dispara evento customizado para permitir que o AuthContext ou Router reaja sem acoplamento direto
+  (error: unknown) => {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
+    const normalizedError = normalizeApiError(error);
+    if (normalizedError.status === 401) {
       window.dispatchEvent(new CustomEvent('efficientia:unauthorized'));
     }
 
-    const mensagemExtraida =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.response?.data?.title ||
-      error.message ||
-      'Erro desconhecido na comunicação com o servidor.';
-
-    return Promise.reject(new Error(mensagemExtraida));
+    return Promise.reject(normalizedError);
   }
 );
 
