@@ -103,3 +103,11 @@
 .api-workbench__success {
   color: #17653d;
 }
+.api-workbench__field input[aria-invalid="true"] {
+  border-color: #a22121;
+}
+
+.api-workbench__hint {
+  color: #46554c;
+  font-size: 0.9rem;
+}
