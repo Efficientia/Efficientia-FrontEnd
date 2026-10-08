@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { NotFound } from './pages/NotFound';
 import { PrivateRoute } from './components/PrivateRoute';
+import { ApiTestWorkbench } from './pages/ApiTestWorkbench';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
+        {import.meta.env.DEV && <Route path="/dev/api-test" element={<ApiTestWorkbench />} />}
           {/* Rota Curinga (404) */}
           <Route path="*" element={<NotFound />} />
         </Routes>
