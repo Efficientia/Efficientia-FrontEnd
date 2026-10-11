@@ -1,0 +1,429 @@
+/* ==========================================================================
+   CINTTIA CHAT WIDGET - EFFICIENTIA FLOATING AI ASSISTANT
+   Janela flutuante acoplada logo acima do botão da IA
+   ========================================================================== */
+
+.cinttia-chat-widget {
+  position: fixed;
+  bottom: 86px;
+  right: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 520px;
+  max-height: calc(100vh - 110px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: var(--eff-bg-card, #ffffff);
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(9, 38, 77, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: cinttiaWidgetAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cinttiaWidgetAppear {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
+   CABEÇALHO
+   ========================================================================== */
+
+.cinttia-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #0f51ae 0%, #1765c9 100%);
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(15, 81, 174, 0.2);
+}
+
+.cinttia-chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cinttia-avatar-badge {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+}
+
+.cinttia-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #56d867;
+  border: 2px solid #0f51ae;
+}
+
+.cinttia-title {
+  margin: 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.cinttia-subtitle {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.cinttia-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cinttia-header-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cinttia-header-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+.cinttia-close-btn:hover {
+  background: rgba(239, 68, 68, 0.8);
+}
+
+/* ==========================================================================
+   MENSAGENS VIEWPORT
+   ========================================================================== */
+
+.cinttia-messages-viewport {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--eff-bg-app, #f8fafd);
+}
+
+.cinttia-msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.msg-row-user {
+  justify-content: flex-end;
+}
+
+.msg-row-assistant {
+  justify-content: flex-start;
+}
+
+.cinttia-msg-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0f51ae;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.cinttia-msg-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  word-break: break-word;
+}
+
+.msg-bubble-user {
+  background: #0f51ae;
+  color: #ffffff;
+  border-radius: 14px 14px 2px 14px;
+  box-shadow: 0 2px 6px rgba(15, 81, 174, 0.2);
+}
+
+.msg-bubble-assistant {
+  background: #ffffff;
+  color: var(--eff-text-primary, #1f242e);
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 14px 14px 14px 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.msg-bubble-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 14px 14px 14px 2px;
+}
+
+.msg-error-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.76rem;
+  color: #b91c1c;
+  margin-bottom: 2px;
+}
+
+.cinttia-msg-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.cinttia-msg-time {
+  align-self: flex-end;
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+/* Indicador de Digitando */
+.cinttia-typing-bubble {
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 14px 14px 14px 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0f51ae;
+  opacity: 0.5;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Sugestões Rápidas */
+.cinttia-suggestions-box {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestions-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--eff-text-muted, #7889a3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.suggestions-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestion-chip {
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid #d5e0ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--eff-blue-primary, #0f51ae);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.35;
+}
+
+.suggestion-chip:hover {
+  background: #eaf2ff;
+  border-color: #0f51ae;
+  transform: translateX(2px);
+}
+
+.cinttia-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-top: 1px solid #fca5a5;
+}
+
+/* ==========================================================================
+   FOOTER / COMPOSER
+   ========================================================================== */
+
+.cinttia-chat-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--eff-bg-card, #ffffff);
+  border-top: 1px solid var(--eff-border-card, #dee7f3);
+  flex-shrink: 0;
+}
+
+.cinttia-chat-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 20px;
+  background: var(--eff-bg-input, #f8fafd);
+  color: var(--eff-text-primary, #1f242e);
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.cinttia-chat-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--eff-blue-primary, #0f51ae);
+  box-shadow: 0 0 0 3px rgba(15, 81, 174, 0.15);
+}
+
+.cinttia-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: #0f51ae;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cinttia-send-btn:hover:not(:disabled) {
+  background: #0c418c;
+  transform: scale(1.05);
+}
+
+.cinttia-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   DARK MODE
+   ========================================================================== */
+
+html[data-theme='dark'] .cinttia-chat-widget {
+  background: var(--eff-dark-surface, #0e2545);
+  border-color: var(--eff-dark-border, #294f7a);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme='dark'] .cinttia-messages-viewport {
+  background: var(--eff-dark-bg, #071329);
+}
+
+html[data-theme='dark'] .msg-bubble-assistant,
+html[data-theme='dark'] .cinttia-typing-bubble {
+  background: var(--eff-dark-surface-raised, #113778);
+  border-color: var(--eff-dark-border, #294f7a);
+  color: var(--eff-dark-text, #f2f7ff);
+}
+
+html[data-theme='dark'] .suggestion-chip {
+  background: var(--eff-dark-surface, #0e2545);
+  border-color: var(--eff-dark-border, #294f7a);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .suggestion-chip:hover {
+  background: var(--eff-dark-surface-raised, #113778);
+  border-color: #60a5fa;
+}
+
+html[data-theme='dark'] .cinttia-chat-footer {
+  background: var(--eff-dark-surface, #0e2545);
+  border-color: var(--eff-dark-border, #294f7a);
+}
+
+html[data-theme='dark'] .cinttia-chat-input {
+  background: var(--eff-dark-bg, #071329);
+  border-color: var(--eff-dark-border, #294f7a);
+  color: var(--eff-dark-text, #f2f7ff);
+}
+
+html[data-theme='dark'] .typing-dot {
+  background: #60a5fa;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .cinttia-chat-widget {
+    right: 12px;
+    bottom: 80px;
+    width: calc(100vw - 24px);
+    height: 480px;
+  }
+}
