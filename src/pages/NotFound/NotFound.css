@@ -1,0 +1,135 @@
+.notfound-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background-color: var(--eff-bg-app, #d8e0f0);
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  color: var(--eff-text-primary, #1f242e);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.notfound-card {
+  max-width: 480px;
+  width: 100%;
+  padding: 48px 36px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(9, 38, 77, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.notfound-logo {
+  margin-bottom: 20px;
+}
+
+.notfound-code {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 5rem;
+  font-weight: 900;
+  color: var(--eff-blue-primary, #0f51ae);
+  line-height: 1;
+  margin: 0 0 12px;
+}
+
+.notfound-title {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--eff-navy-dark, #09264d);
+  margin: 0 0 12px;
+}
+
+.notfound-text {
+  font-size: 0.95rem;
+  color: #556b8d;
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.notfound-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.notfound-btn-primary {
+  min-height: 44px;
+  padding: 0 24px;
+  border-radius: 9999px;
+  background-color: var(--eff-blue-primary, #0f51ae);
+  color: #ffffff;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.notfound-btn-primary:hover {
+  background-color: #0c418c;
+  transform: translateY(-1px);
+}
+
+.notfound-btn-secondary {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  border: 1.5px solid #cbd7ea;
+  background: transparent;
+  color: #556b8d;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.notfound-btn-secondary:hover {
+  border-color: #0f51ae;
+  color: #0f51ae;
+}
+
+/* Dark mode */
+html[data-theme='dark'] .notfound-container {
+  background-color: #0b1320;
+}
+
+html[data-theme='dark'] .notfound-card {
+  background-color: #172133;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme='dark'] .notfound-code {
+  color: #60a5fa;
+}
+
+html[data-theme='dark'] .notfound-title {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .notfound-text {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .notfound-btn-secondary {
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .notfound-btn-secondary:hover {
+  border-color: #60a5fa;
+  color: #60a5fa;
+}
