@@ -1,12 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { PrivateRoute } from './components/PrivateRoute';
-import { DASHBOARD_ALLOWED_ROLES } from './constants/auth';
 import { AiSupportBox } from './components/AiSupportBox';
 import './App.css';
 const Home = lazy(() => import('./pages/Home').then(({ Home }) => ({ default: Home })));
 const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default: Login })));
+const Cadastro = lazy(() => import('./pages/Cadastro').then(({ Cadastro }) => ({ default: Cadastro })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(({ Dashboard }) => ({ default: Dashboard })));
 const NotFound = lazy(() => import('./pages/NotFound').then(({ NotFound }) => ({ default: NotFound })));
 const AiTestWorkbench = lazy(() =>
@@ -30,6 +29,33 @@ function RouteFocusManager() {
 
   return null;
 }
+function AppLayout() {
+  const location = useLocation();
+  const isNoFloatingWidgetPage =
+    location.pathname === '/cadastro' ||
+    location.pathname === '/login' ||
+    location.pathname === '/visao-geral' ||
+    location.pathname === '/dashboard';
+
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/visao-geral" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/ai-test" element={<AiTestWorkbench />} />
+        {DevApiTestWorkbench && (
+          <Route path="/dev/api-test" element={<DevApiTestWorkbench />} />
+        )}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <RouteFocusManager />
+      {!isNoFloatingWidgetPage && <AiSupportBox />}
+    </>
+  );
+}
 
 function App() {
   return (
@@ -43,24 +69,7 @@ function App() {
             </main>
           }
         >
-          <>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route
-                element={<PrivateRoute allowedRoles={[...DASHBOARD_ALLOWED_ROLES]} />}
-              >
-                <Route path="/dashboard" element={<Dashboard />} />
-              </Route>
-              <Route path="/ai-test" element={<AiTestWorkbench />} />
-              {DevApiTestWorkbench && (
-                <Route path="/dev/api-test" element={<DevApiTestWorkbench />} />
-              )}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <RouteFocusManager />
-            <AiSupportBox />
-          </>
+          <AppLayout />
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
