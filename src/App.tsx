@@ -3,12 +3,15 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { DASHBOARD_ALLOWED_ROLES } from './constants/auth';
+import { AiSupportBox } from './components/AiSupportBox';
 import './App.css';
-
 const Home = lazy(() => import('./pages/Home').then(({ Home }) => ({ default: Home })));
 const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default: Login })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(({ Dashboard }) => ({ default: Dashboard })));
 const NotFound = lazy(() => import('./pages/NotFound').then(({ NotFound }) => ({ default: NotFound })));
+const AiTestWorkbench = lazy(() =>
+  import('./pages/AiTestWorkbench').then(({ AiTestWorkbench }) => ({ default: AiTestWorkbench }))
+);
 const DevApiTestWorkbench = import.meta.env.DEV
   ? lazy(() =>
       import('./pages/ApiTestWorkbench').then(({ ApiTestWorkbench }) => ({ default: ApiTestWorkbench }))
@@ -49,12 +52,14 @@ function App() {
               >
                 <Route path="/dashboard" element={<Dashboard />} />
               </Route>
+              <Route path="/ai-test" element={<AiTestWorkbench />} />
               {DevApiTestWorkbench && (
                 <Route path="/dev/api-test" element={<DevApiTestWorkbench />} />
               )}
               <Route path="*" element={<NotFound />} />
             </Routes>
             <RouteFocusManager />
+            <AiSupportBox />
           </>
         </Suspense>
       </AuthProvider>
