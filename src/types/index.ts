@@ -6,3 +6,4 @@ export * from './documento';
 export * from './relatorio';
 export * from './frota';
 export * from './api';
+export * from './ai';
