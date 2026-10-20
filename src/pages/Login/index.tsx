@@ -5,6 +5,7 @@ import { authService } from '../../services/authService';
 import { normalizeApiError, type ApiRequestError } from '../../services/api';
 import type { LoginAdminRequest, LoginRequest } from '../../types/auth';
 import { DASHBOARD_ALLOWED_ROLES } from '../../constants/auth';
+import { formatCnpj, formatCpf } from '../../utils/validators';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
 import './Login.css';
 
@@ -16,11 +17,11 @@ export function Login() {
 
   const [mode, setMode] = useState<LoginMode>('admin');
 
-  // Campos para Administrador (POST /api/v1/auth/adm/login)
-  const [adminCnpj, setAdminCnpj] = useState('');
+  // Modo Administrador (POST /api/v1/auth/adm/login)
+  const [adminIdentifier, setAdminIdentifier] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
 
-  // Campos para Operacional (POST /api/v1/auth/login)
+  // Modo Operacional (POST /api/v1/auth/login: CPF + Email + Codigo + Senha)
   const [opCpf, setOpCpf] = useState('');
   const [opEmail, setOpEmail] = useState('');
   const [opCompanyCode, setOpCompanyCode] = useState('');
@@ -31,32 +32,13 @@ export function Login() {
   const [notice, setNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Formatação de CNPJ: 00.000.000/0000-00
-  function formatCnpj(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 14);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-    if (digits.length <= 12) {
-      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-    }
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-  }
-
-  // Formatação de CPF: 000.000.000-00
-  function formatCpf(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-  }
-
   // Validações Admin
-  const cleanAdminCnpj = adminCnpj.replace(/\D/g, '');
-  const isAdminCnpjValid = cleanAdminCnpj.length === 14 || adminCnpj.trim().includes('@');
+  const cleanAdminDigits = adminIdentifier.replace(/\D/g, '');
+  const isAdminCnpj = cleanAdminDigits.length === 14;
+  const isAdminEmail = adminIdentifier.includes('@') && adminIdentifier.trim().length >= 5;
+  const isAdminIdentifierValid = isAdminCnpj || isAdminEmail || cleanAdminDigits.length === 11;
   const isAdminPasswordValid = adminPassword.trim().length >= 6;
-  const isAdminFormValid = isAdminCnpjValid && isAdminPasswordValid;
+  const isAdminFormValid = isAdminIdentifierValid && isAdminPasswordValid;
 
   // Validações Operacional
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,29 +58,29 @@ export function Login() {
     setNotice('');
 
     if (mode === 'admin') {
-      setTouched({ adminCnpj: true, adminPassword: true });
+      setTouched({ adminIdentifier: true, adminPassword: true });
       if (!isAdminFormValid) return;
 
       setIsSubmitting(true);
       try {
-        let loginIdentifier = adminCnpj.trim();
+        let loginEmail = adminIdentifier.trim();
 
-        // Se foi fornecido CNPJ (14 dígitos), tenta obter o e-mail corporativo correspondente
-        if (cleanAdminCnpj.length === 14) {
+        // Se for CNPJ, consulta o e-mail corporativo correspondente ou envia o identificador
+        if (isAdminCnpj) {
           try {
-            const empresaInfo = await authService.loginEmpresa({ identificador: cleanAdminCnpj });
+            const empresaInfo = await authService.loginEmpresa({ identificador: cleanAdminDigits });
             if (empresaInfo.empresa?.emailCorporativo) {
-              loginIdentifier = empresaInfo.empresa.emailCorporativo;
+              loginEmail = empresaInfo.empresa.emailCorporativo;
             }
           } catch {
-            // Se falhar a resolução pelo loginEmpresa, envia o identificador diretamente
+            // Se falhar a busca, mantém o identificador informado
           }
         }
 
         const request: LoginAdminRequest = {
-          email: loginIdentifier,
+          email: loginEmail,
           senha: adminPassword,
-          ...(cleanAdminCnpj.length === 14 ? { cnpj: cleanAdminCnpj } : {}),
+          ...(isAdminCnpj ? { cnpj: cleanAdminDigits } : {}),
         };
 
         const roles = await loginAdmin(request);
@@ -137,7 +119,7 @@ export function Login() {
         if (canOpenDashboard) {
           navigate('/dashboard', { replace: true });
         } else {
-          setNotice('Login operacional efetuado com sucesso! Usuário autenticado.');
+          setNotice('Login operacional concluído com sucesso!');
         }
       } catch (requestError) {
         setError(normalizeApiError(requestError));
@@ -153,7 +135,7 @@ export function Login() {
         <div className="login-content">
           <h1 id="login-title" className="login-title">Entrar</h1>
 
-          {/* Botões seletores de Modo / Perfil segundo API-Map */}
+          {/* Alternador de Modo de Autenticação */}
           <div className="auth-mode-selector" role="tablist" aria-label="Selecione o tipo de login">
             <button
               type="button"
@@ -192,31 +174,31 @@ export function Login() {
               /* Formulário de Administrador (POST /api/v1/auth/adm/login) */
               <>
                 <div className="login-input-group">
-                  <label htmlFor="login-admin-cnpj" className="field-label">
-                    <span>CNPJ <span className="field-required">*</span></span>
+                  <label htmlFor="login-admin-identificador" className="field-label">
+                    <span>CNPJ ou E-mail <span className="field-required">*</span></span>
                   </label>
                   <input
-                    id="login-admin-cnpj"
-                    name="adminCnpj"
+                    id="login-admin-identificador"
+                    name="adminIdentifier"
                     type="text"
-                    placeholder="CNPJ"
-                    autoComplete="organization"
+                    placeholder="CNPJ ou E-mail"
+                    autoComplete="username"
                     required
-                    value={adminCnpj}
-                    onBlur={() => setTouched((prev) => ({ ...prev, adminCnpj: true }))}
+                    value={adminIdentifier}
+                    onBlur={() => setTouched((prev) => ({ ...prev, adminIdentifier: true }))}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setAdminCnpj(val.includes('@') ? val : formatCnpj(val));
+                      setAdminIdentifier(val.includes('@') ? val : (val.replace(/\D/g, '').length > 0 && !/[a-zA-Z]/.test(val) ? formatCnpj(val) : val));
                       if (error) setError(null);
                     }}
                     className={`login-input ${
-                      touched.adminCnpj && !isAdminCnpjValid ? 'has-error' : ''
+                      touched.adminIdentifier && !isAdminIdentifierValid ? 'has-error' : ''
                     }`}
-                    aria-invalid={touched.adminCnpj && !isAdminCnpjValid}
+                    aria-invalid={touched.adminIdentifier && !isAdminIdentifierValid}
                   />
-                  {touched.adminCnpj && !isAdminCnpjValid && (
+                  {touched.adminIdentifier && !isAdminIdentifierValid && (
                     <span className="login-field-error" role="alert">
-                      O CNPJ deve conter exatamente 14 dígitos.
+                      Informe um CNPJ válido (14 dígitos) ou e-mail corporativo.
                     </span>
                   )}
                 </div>
@@ -251,7 +233,7 @@ export function Login() {
                 </div>
               </>
             ) : (
-              /* Formulário Operacional (POST /api/v1/auth/login: CPF + Email + Codigo + Senha) */
+              /* Formulário Operacional (POST /api/v1/auth/login) */
               <>
                 <div className="login-input-group">
                   <label htmlFor="login-op-cpf" className="field-label">
@@ -275,7 +257,7 @@ export function Login() {
                   />
                   {touched.opCpf && !isOpCpfValid && (
                     <span className="login-field-error" role="alert">
-                      O CPF deve conter 11 dígitos.
+                      O CPF deve conter exatamente 11 dígitos.
                     </span>
                   )}
                 </div>
@@ -288,7 +270,7 @@ export function Login() {
                     id="login-op-email"
                     name="opEmail"
                     type="email"
-                    placeholder="E-mail operacional"
+                    placeholder="E-mail"
                     autoComplete="email"
                     required
                     value={opEmail}
@@ -410,8 +392,8 @@ export function Login() {
               title={
                 !isFormValid
                   ? mode === 'admin'
-                    ? 'Preencha o CNPJ (14 dígitos) e senha'
-                    : 'Preencha CPF (11 dígitos), e-mail, código da empresa e senha'
+                    ? 'Preencha o CNPJ ou e-mail corporativo e senha'
+                    : 'Preencha CPF, e-mail, código da empresa e senha'
                   : undefined
               }
             >
