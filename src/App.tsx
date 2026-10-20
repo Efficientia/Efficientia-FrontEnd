@@ -8,6 +8,9 @@ const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default:
 const Cadastro = lazy(() => import('./pages/Cadastro').then(({ Cadastro }) => ({ default: Cadastro })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(({ Dashboard }) => ({ default: Dashboard })));
 const NotFound = lazy(() => import('./pages/NotFound').then(({ NotFound }) => ({ default: NotFound })));
+const EsqueciSenha = lazy(() =>
+  import('./pages/EsqueciSenha').then(({ EsqueciSenha }) => ({ default: EsqueciSenha }))
+);
 const AiTestWorkbench = lazy(() =>
   import('./pages/AiTestWorkbench').then(({ AiTestWorkbench }) => ({ default: AiTestWorkbench }))
 );
@@ -34,6 +37,7 @@ function AppLayout() {
   const isNoFloatingWidgetPage =
     location.pathname === '/cadastro' ||
     location.pathname === '/login' ||
+    location.pathname === '/esqueci-minha-senha' ||
     location.pathname === '/visao-geral' ||
     location.pathname === '/dashboard';
 
@@ -43,6 +47,7 @@ function AppLayout() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/esqueci-minha-senha" element={<EsqueciSenha />} />
         <Route path="/visao-geral" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/ai-test" element={<AiTestWorkbench />} />

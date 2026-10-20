@@ -8,3 +8,12 @@ export function isValidCpfFormat(value: string): boolean {
 export function isValidBrazilianLicensePlate(value: string): boolean {
   return BRAZILIAN_LICENSE_PLATE_FORMAT.test(value.trim());
 }
+
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+export function isValidCnpjFormat(value: string): boolean {
+  const clean = value.replace(/\D/g, '');
+  return clean.length === 14;
+}

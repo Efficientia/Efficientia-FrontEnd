@@ -19,12 +19,13 @@
   max-height: 100vh;
   background-color: #16468e;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 1.5rem 3.5rem;
+  justify-content: flex-start;
+  padding: 2rem 3rem;
   box-sizing: border-box;
   z-index: 2;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .cadastro-content {
@@ -34,6 +35,7 @@
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
+  margin: auto 0;
 }
 
 .cadastro-title {
@@ -44,6 +46,120 @@
   margin: 0 0 1.85rem 0;
   letter-spacing: -0.02em;
   text-align: center;
+}
+
+/* Seletor de Modo / Perfil no Cadastro */
+.auth-mode-selector {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 4px;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.auth-mode-btn {
+  flex: 1 1 0;
+  padding: 0.6rem 0.4rem;
+  font-size: clamp(0.72rem, 1.8vw, 0.8rem);
+  font-weight: 600;
+  color: #dbe7fc;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Montserrat', sans-serif;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.25;
+  min-height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-mode-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.auth-mode-btn.active {
+  background-color: #ffffff;
+  color: #16468e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.auth-mode-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Legenda e Labels de campos obrigatórios/opcionais */
+.form-legend {
+  font-size: 0.78rem;
+  color: #c0d4f7;
+  margin: -0.25rem 0 0.5rem 0;
+  text-align: left;
+  width: 100%;
+}
+
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #dbe7fc;
+  margin-bottom: 0.35rem;
+}
+
+.field-required {
+  color: #ff9e9e;
+  font-weight: 700;
+  margin-left: 0.25rem;
+}
+
+.field-optional {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #a4beec;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* Aviso de campos gerados automaticamente pelo sistema */
+.system-auto-notice {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  color: #e2ecfd;
+  margin-bottom: 0.75rem;
+  line-height: 1.45;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.system-auto-notice strong {
+  color: #ffffff;
+}
+
+.system-auto-badge {
+  display: inline-block;
+  background: #2e7d32;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-left: 0.5rem;
+  vertical-align: middle;
 }
 
 .cadastro-form {
@@ -96,6 +212,30 @@
   outline: 3px solid #46c960;
   outline-offset: 2px;
   background-color: #ffffff;
+}
+
+/* Estilos de erro nos inputs */
+.cadastro-input.has-error {
+  border: 1.5px solid #d32f2f;
+  background-color: #fff8f8;
+}
+
+.cadastro-input.has-error:focus-visible {
+  outline: 3px solid #d32f2f;
+}
+
+.cadastro-select {
+  cursor: pointer;
+  appearance: auto;
+}
+
+.cadastro-field-error {
+  display: block;
+  color: #ffb4ab;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  padding-left: 0.5rem;
 }
 
 /* Feedback e mensagens */
@@ -230,20 +370,63 @@
 @media (max-width: 960px) {
   .cadastro-container {
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .cadastro-form-section {
     flex: 1 1 auto;
     width: 100%;
     height: auto;
-    max-height: 100vh;
-    padding: 1.5rem 1.25rem;
-    overflow: hidden;
+    min-height: 100vh;
+    max-height: none;
+    padding: 2rem 1.5rem 3rem 1.5rem;
+    overflow-y: visible;
+    justify-content: flex-start;
+  }
+
+  .cadastro-content {
+    margin: 0 auto;
   }
 
   .cadastro-hero-section {
-    display: none; /* Em telas muito pequenas, mantemos o formulário sem scroll */
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .cadastro-form-section {
+    padding: 1.5rem 1rem 2.5rem 1rem;
+  }
+
+  .cadastro-title {
+    font-size: 1.65rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .auth-mode-selector {
+    gap: 0.25rem;
+    padding: 3px;
+  }
+
+  .auth-mode-btn {
+    padding: 0.5rem 0.35rem;
+    font-size: 0.72rem;
+    min-height: 2.4rem;
+  }
+
+  .cadastro-input,
+  .cadastro-select {
+    height: 3.15rem;
+    font-size: 1rem;
+  }
+
+  .cadastro-submit-btn {
+    height: 3.15rem;
+    font-size: 1.1rem;
+    max-width: 100%;
   }
 }

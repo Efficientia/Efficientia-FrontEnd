@@ -24,7 +24,7 @@
   padding: 1.5rem 3.5rem;
   box-sizing: border-box;
   z-index: 2;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .login-content {
@@ -44,6 +44,83 @@
   margin: 0 0 2.25rem 0;
   letter-spacing: -0.02em;
   text-align: center;
+}
+
+/* Seletor de Modo / Perfil (Admin vs Operacional) */
+.auth-mode-selector {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 4px;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.auth-mode-btn {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #dbe7fc;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Montserrat', sans-serif;
+  text-align: center;
+}
+
+.auth-mode-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.auth-mode-btn.active {
+  background-color: #ffffff;
+  color: #16468e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.auth-mode-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Legenda e Labels de campos obrigatórios/opcionais */
+.form-legend {
+  font-size: 0.78rem;
+  color: #c0d4f7;
+  margin: -0.25rem 0 0.5rem 0;
+  text-align: left;
+  width: 100%;
+}
+
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #dbe7fc;
+  margin-bottom: 0.35rem;
+}
+
+.field-required {
+  color: #ff9e9e;
+  font-weight: 700;
+  margin-left: 0.25rem;
+}
+
+.field-optional {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #a4beec;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .login-form {
@@ -96,6 +173,24 @@
   outline: 3px solid #46c960;
   outline-offset: 2px;
   background-color: #ffffff;
+}
+
+.login-input.has-error {
+  border: 1.5px solid #d32f2f;
+  background-color: #fff8f8;
+}
+
+.login-input.has-error:focus-visible {
+  outline: 3px solid #d32f2f;
+}
+
+.login-field-error {
+  display: block;
+  color: #ffb4ab;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  padding-left: 0.5rem;
 }
 
 /* Link Esqueci minha senha */
@@ -256,20 +351,61 @@
 @media (max-width: 960px) {
   .login-container {
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .login-form-section {
     flex: 1 1 auto;
     width: 100%;
     height: auto;
-    max-height: 100vh;
-    padding: 1.5rem 1.25rem;
-    overflow: hidden;
+    min-height: 100vh;
+    max-height: none;
+    padding: 2rem 1.5rem 3rem 1.5rem;
+    overflow-y: visible;
+    justify-content: flex-start;
+  }
+
+  .login-content {
+    margin: 0 auto;
   }
 
   .login-hero-section {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form-section {
+    padding: 1.5rem 1rem 2.5rem 1rem;
+  }
+
+  .login-title {
+    font-size: 1.65rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .auth-mode-selector {
+    gap: 0.25rem;
+    padding: 3px;
+  }
+
+  .auth-mode-btn {
+    padding: 0.5rem 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .login-input {
+    height: 3.15rem;
+    font-size: 1rem;
+  }
+
+  .login-submit-btn {
+    height: 3.15rem;
+    font-size: 1.1rem;
+    max-width: 100%;
   }
 }
