@@ -33,8 +33,17 @@ export function normalizeApiError(error: unknown): ApiRequestError {
     const title = typeof body?.title === 'string' ? body.title : undefined;
     const fieldErrors = body?.fieldErrors ?? {};
 
+    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || !error.response && /timeout|network error/i.test(error.message);
+    const normalizedMessage =
+      error.response?.status === 401
+        ? 'Sua sessão não está autenticada ou expirou. Entre novamente para continuar.'
+        : error.response?.status === 403
+        ? 'Seu usuário não tem permissão para consultar este recurso.'
+        : isTimeout
+        ? 'A API do Efficientia não respondeu no tempo esperado. O serviço pode estar acordando; tente novamente em alguns segundos.'
+        : detail ?? message ?? title ?? error.message;
     return new ApiRequestError(
-      detail ?? message ?? title ?? error.message,
+      normalizedMessage,
       error.response?.status,
       title,
       fieldErrors

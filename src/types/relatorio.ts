@@ -55,6 +55,8 @@ export interface CriarRelatorioViagemRequest {
   paradasImprevistas?: ParadaImprevistaDto[] | null;
   anomaliasEmbarque?: AnomaliaItemDto[] | null;
   anomaliasDesembarque?: AnomaliaItemDto[] | null;
+  nomeOrigem?: string | null;
+  nomeDestino?: string | null;
 }
 
 export interface RelatorioViagemResponse {
@@ -108,6 +110,8 @@ export interface RelatorioViagemResponse {
   paradasImprevistas: ParadaImprevistaDto[];
   anomaliasEmbarque: AnomaliaItemDto[];
   anomaliasDesembarque: AnomaliaItemDto[];
+  nomeOrigem?: string | null;
+  nomeDestino?: string | null;
 }
 
 export interface RelatorioViagemPageResponse {

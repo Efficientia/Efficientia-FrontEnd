@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -7,7 +7,8 @@ interface PrivateRouteProps {
 }
 
 export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
-  const { isAuthenticated, isLoading, roles } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, isLoading, roles, empresa } = useAuth();
   useEffect(() => {
     if (isLoading) return;
     const frame = requestAnimationFrame(() => {
@@ -38,6 +39,33 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   // Se não estiver logado, redireciona para a página de login pública
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  const onboardingCompleted = (() => {
+    try {
+      return localStorage.getItem('@efficientia:onboarding:completed') === 'true';
+    } catch {
+      return false;
+    }
+  })() || (empresa?.cadastroCompleto === true && empresa.proximoPasso === 'PAINEL_ADMINISTRATIVO');
+
+  if (!onboardingCompleted) {
+    const currentStep = (() => {
+      try {
+        return localStorage.getItem('@efficientia:onboarding:current_step');
+      } catch {
+        return null;
+      }
+    })();
+    const pendingPath = currentStep === '3'
+      ? '/onboarding/etapa-3'
+      : currentStep === '2'
+      ? '/onboarding/etapa-2'
+      : empresa?.etapaCadastro === 3
+      ? '/onboarding/etapa-3'
+      : empresa?.etapaCadastro === 2
+      ? '/onboarding/etapa-2'
+      : '/onboarding';
+    return <Navigate to={pendingPath} replace state={{ from: location.pathname }} />;
   }
 
   // Se a rota exige roles específicas e o usuário não possui nenhuma compatível

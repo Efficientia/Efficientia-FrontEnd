@@ -22,6 +22,23 @@ export const relatorioService = {
     return data;
   },
 
+  /**
+   * Percorre todas as páginas de GET /api/v1/relatorios-viagem e devolve a lista completa.
+   * Usado nos indicadores consolidados, que não podem ser apurados sobre uma única página.
+   * A quantidade de páginas segue o `totalPaginas` retornado pela própria API.
+   */
+  async listarTodos(signal?: AbortSignal, tamanho = 100): Promise<RelatorioViagemResponse[]> {
+    const primeira = await relatorioService.listar(0, tamanho, signal);
+    const restantes = await Promise.all(
+      Array.from({ length: Math.max(0, primeira.totalPaginas - 1) }, (_, i) =>
+        relatorioService.listar(i + 1, tamanho, signal)
+      )
+    );
+    const porId = new Map<number, RelatorioViagemResponse>();
+    [primeira, ...restantes].forEach((pagina) => pagina.itens.forEach((r) => porId.set(r.id, r)));
+    return [...porId.values()];
+  },
+
   async buscarPorId(id: number, signal?: AbortSignal): Promise<RelatorioViagemResponse> {
     const { data } = await apiClient.get<RelatorioViagemResponse>(`/api/v1/relatorios-viagem/${id}`, { signal });
     return data;

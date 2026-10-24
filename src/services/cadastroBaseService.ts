@@ -31,7 +31,15 @@ export const cadastroBaseService = {
     const { data } = await apiClient.post<FazendaResponse>('/api/v1/fazendas', request, { signal });
     return data;
   },
+  async listarFazendas(signal?: AbortSignal): Promise<FazendaResponse[]> {
+    const { data } = await apiClient.get<FazendaResponse[]>('/api/v1/locais-diario/fazendas', { signal });
+    return data;
+  },
 
+  async listarUnidadesFrigorificas(signal?: AbortSignal): Promise<FazendaResponse[]> {
+    const { data } = await apiClient.get<FazendaResponse[]>('/api/v1/locais-diario/unidades-frigorificas', { signal });
+    return data;
+  },
   async cadastrarCavalo(request: CriarCavaloRequest, signal?: AbortSignal): Promise<CavaloResponse> {
     const { data } = await apiClient.post<CavaloResponse>('/api/v1/veiculos/cavalos', request, { signal });
     return data;

@@ -1,13 +1,266 @@
+/* ==========================================================================
+   EFFICIENTIA DESIGN SYSTEM — LINGUAGEM COMPARTILHADA PELAS REFERÊNCIAS SVG
+   "references_front/Prototipo visão web.svg" & "references_front/Protótipo Web - Dark Mode.svg"
+   ========================================================================== */
+
+:root {
+  /* Cores Principais / Brand Tokens */
+  --eff-blue-primary: #0F51AE;
+  --eff-blue-hover: #0C418C;
+  --eff-green-action: #56D867;
+  --eff-green-hover: #47CE63;
+  --eff-navy-dark: #09264D;
+
+  /* Superfícies, Fundos e Bordas (Light Mode) */
+  --eff-bg-app: #D8DEEB;
+  --eff-bg-card: #FDFEFF;
+  --eff-bg-input: #F8FAFD;
+  --eff-border-light: #D8E0F0;
+  --eff-border-card: #DEE7F3;
+  --eff-border-divider: #F1F3F9;
+
+  /* Tipografia e Textos (Light Mode) */
+  --eff-text-primary: #1F242E;
+  --eff-text-secondary: #526886;
+  --eff-text-muted: #7889A3;
+  --eff-text-placeholder: #8C98A9;
+  --eff-font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Modo Escuro (Dark Mode Tokens - Protótipo Web - Dark Mode.svg) */
+  --eff-dark-bg: #071329;
+  --eff-dark-surface: #0E2545;
+  --eff-dark-surface-raised: #113778;
+  --eff-dark-border: #294F7A;
+  --eff-dark-text: #F2F7FF;
+  --eff-dark-text-secondary: #ABBFDB;
+  --eff-dark-blue: #2E7AE6;
+  --eff-dark-green: #56D867;
+  --eff-dark-focus: #85B8FF;
+
+  /* Raios de Borda e Sombras */
+  --eff-radius-sm: 6px;
+  --eff-radius-md: 10px;
+  --eff-radius-lg: 16px;
+  --eff-radius-pill: 9999px;
+  --eff-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --eff-shadow-card: 0 4px 18px rgba(9, 38, 77, 0.06);
+  --eff-shadow-popover: 0 10px 30px rgba(7, 19, 41, 0.16);
+}
+
+/* ==========================================================================
+   RESET & TIPOGRAFIA GLOBAL
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow-x: hidden;
-  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100%;
+  font-family: var(--eff-font-family);
+  background: var(--eff-bg-app);
+  color: var(--eff-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100%;
+  width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--eff-font-family);
+  font: inherit;
+}
+
+/* ==========================================================================
+   SCROLLBAR DISCRETA
+   ========================================================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 81, 174, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(15, 81, 174, 0.25);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(15, 81, 174, 0.45);
+}
+
+/* ==========================================================================
+   ESTRUTURA BASE DE PÁGINAS E CONTAINERS
+   ========================================================================== */
+
+.home-container,
+.login-shell,
+.cadastro-shell,
+.esqueci-shell,
+.onb-shell,
+.vg-shell,
+.fleet-page,
+.drivers-page,
+.locations-page,
+.configuration-shell {
+  min-height: 100vh;
+}
+
+/* Cards internos (NUNCA os containers 100vw da raiz) */
+.onb-form-card,
+.onb-review-card,
+.configuration-card,
+.fleet-card,
+.driver-card,
+.location-card,
+.vg-card {
+  border-radius: var(--eff-radius-lg);
+  box-shadow: var(--eff-shadow-card);
+}
+
+/* ==========================================================================
+   MODO ESCURO GLOBAL (DARK MODE)
+   ========================================================================== */
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] #root,
+html[data-theme='dark'] .home-container,
+html[data-theme='dark'] .vg-shell,
+html[data-theme='dark'] .fleet-page,
+html[data-theme='dark'] .drivers-page,
+html[data-theme='dark'] .locations-page,
+html[data-theme='dark'] .configuration-shell,
+html[data-theme='dark'] .onb-shell,
+html[data-theme='dark'] .ai-workbench {
+  background: var(--eff-dark-bg);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] * {
+  scrollbar-color: rgba(41, 79, 122, 0.45) transparent;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb {
+  background-color: rgba(41, 79, 122, 0.45);
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(41, 79, 122, 0.7);
+}
+
+/* Componentes e superfícies escuras */
+html[data-theme='dark'] .vg-topbar,
+html[data-theme='dark'] .vg-sidebar {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+}
+
+html[data-theme='dark'] .vg-topbar-divider,
+html[data-theme='dark'] .vg-sidebar-divider {
+  background: var(--eff-dark-border);
+}
+
+html[data-theme='dark'] .vg-page-heading h1,
+html[data-theme='dark'] .vg-card-title,
+html[data-theme='dark'] .vg-chart-title-lg,
+html[data-theme='dark'] .vg-chart-title-sm,
+html[data-theme='dark'] .vg-bottom-title,
+html[data-theme='dark'] .fleet-heading h2,
+html[data-theme='dark'] .drivers-heading h2,
+html[data-theme='dark'] .locations-heading h2,
+html[data-theme='dark'] .configuration-card h2,
+html[data-theme='dark'] .onb-title,
+html[data-theme='dark'] .onb-card-title {
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .vg-page-subtitle,
+html[data-theme='dark'] .configuration-card-description,
+html[data-theme='dark'] .onb-description,
+html[data-theme='dark'] .onb-card-hint {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .vg-search-box,
+html[data-theme='dark'] .vg-bell-btn,
+html[data-theme='dark'] .vg-card,
+html[data-theme='dark'] .configuration-card,
+html[data-theme='dark'] .onb-form-card,
+html[data-theme='dark'] .onb-review-card,
+html[data-theme='dark'] .location-card,
+html[data-theme='dark'] .fleet-card,
+html[data-theme='dark'] .driver-card,
+html[data-theme='dark'] .drivers-table-wrap,
+html[data-theme='dark'] .vg-reports-view,
+html[data-theme='dark'] .vg-queue-item,
+html[data-theme='dark'] .vg-alert-item,
+html[data-theme='dark'] .vg-route-item {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-text);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background: #0b1c36;
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .vg-nav-item {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .vg-nav-item:hover:not(.active) {
+  background: var(--eff-dark-surface-raised);
+}
+
+html[data-theme='dark'] .vg-nav-item.active {
+  background: var(--eff-dark-blue);
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .vg-cta-btn,
+html[data-theme='dark'] .configuration-save-top,
+html[data-theme='dark'] .fleet-refresh,
+html[data-theme='dark'] .drivers-refresh,
+html[data-theme='dark'] .locations-refresh {
+  background: var(--eff-dark-green);
+  color: #071329;
+}
+
+html[data-theme='dark'] .ai-support-dialog,
+html[data-theme='dark'] .ai-support-feed,
+html[data-theme='dark'] .ai-workbench__session,
+html[data-theme='dark'] .ai-workbench__conversation,
+html[data-theme='dark'] .api-workbench__card {
+  background: var(--eff-dark-surface);
+  color: var(--eff-dark-text);
+  border-color: var(--eff-dark-border);
 }

@@ -1,9 +1,28 @@
 import { useCallback, useMemo, useReducer, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useFetchData } from '../../hooks/useFetchData';
+import { caminhaoService } from '../../services/caminhaoService';
+import { funcionarioService } from '../../services/funcionarioService';
 import { relatorioService } from '../../services/relatorioService';
 import type { RelatorioViagemResponse } from '../../types/relatorio';
+import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
+import {
+  buildAlerts,
+  buildAnalysisQueue,
+  buildOngoingRoutes,
+  buildWeeklySeries,
+  formatPercent,
+  niceCeiling,
+  startOfWeek,
+  totalsFromSeries,
+  type AlertItem,
+  type AnalysisQueueItem,
+  type ChartDayBar,
+  type OngoingRouteItem,
+} from './dashboardMetrics';
 import { filterReports, INITIAL_REPORT_FILTERS, reportFiltersReducer } from './reportFilters';
-import avatarUser from '../../assets/avatar-user.png';
 import {
   BullBrandLogo,
   SidebarIconGrid,
@@ -22,83 +41,58 @@ import {
   SearchMagnifierIcon,
   AlertTriangleYellowIcon,
   RouteActiveDotIcon,
+  SunIcon,
+  MoonIcon,
 } from './DashboardIcons';
 import './Dashboard.css';
+import { InteractiveBarChart } from './InteractiveBarChart';
 
 const PAGE_SIZE = 20;
 
-interface ChartDayBar {
-  readonly day: string;
-  readonly value: number;
-  readonly heightPct: number;
-  readonly highlight?: boolean;
-}
-
-interface AnalysisQueueItem {
-  readonly id: string;
-  readonly code: string;
-  readonly gta: string;
-  readonly driver: string;
-  readonly route: string;
-  readonly status: string;
-}
-
-interface AlertItem {
-  readonly id: string;
-  readonly title: string;
-  readonly subtitle: string;
-}
-
-interface OngoingRouteItem {
-  readonly id: string;
-  readonly driver: string;
-  readonly route: string;
-  readonly progressPct: number;
-}
-
+/* Mockups de fallback estritamente idênticos aos protótipos de referência */
 const VOLUME_DESEMBARQUE_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 1250, heightPct: 40, highlight: true },
-  { day: 'Seg', value: 3000, heightPct: 96 },
-  { day: 'Ter', value: 2200, heightPct: 71 },
-  { day: 'Qua', value: 3050, heightPct: 98 },
-  { day: 'Qui', value: 2600, heightPct: 84 },
-  { day: 'Sex', value: 2350, heightPct: 75 },
-  { day: 'Sáb', value: 1800, heightPct: 57, highlight: true },
+  { day: 'Dom', value: 1250, heightPct: 40, highlight: false },
+  { day: 'Seg', value: 3000, heightPct: 96, highlight: false },
+  { day: 'Ter', value: 2200, heightPct: 71, highlight: false },
+  { day: 'Qua', value: 3050, heightPct: 98, highlight: false },
+  { day: 'Qui', value: 2600, heightPct: 84, highlight: false },
+  { day: 'Sex', value: 2350, heightPct: 75, highlight: true },
+  { day: 'Sáb', value: 1800, heightPct: 57, highlight: false },
 ];
 
 const VOLUME_EMBARQUE_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 260, heightPct: 28 },
-  { day: 'Seg', value: 560, heightPct: 62 },
-  { day: 'Ter', value: 420, heightPct: 47 },
-  { day: 'Qua', value: 790, heightPct: 88 },
-  { day: 'Qui', value: 710, heightPct: 79 },
-  { day: 'Sex', value: 900, heightPct: 100 },
-  { day: 'Sáb', value: 640, heightPct: 71, highlight: true },
+  { day: 'Dom', value: 260, heightPct: 28, highlight: false },
+  { day: 'Seg', value: 560, heightPct: 62, highlight: false },
+  { day: 'Ter', value: 420, heightPct: 47, highlight: false },
+  { day: 'Qua', value: 790, heightPct: 88, highlight: false },
+  { day: 'Qui', value: 710, heightPct: 79, highlight: false },
+  { day: 'Sex', value: 900, heightPct: 100, highlight: true },
+  { day: 'Sáb', value: 640, heightPct: 71, highlight: false },
 ];
 
 const MORTES_REGISTRADAS_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 1, heightPct: 14 },
-  { day: 'Seg', value: 3, heightPct: 30 },
-  { day: 'Ter', value: 2, heightPct: 21 },
-  { day: 'Qua', value: 5, heightPct: 50 },
-  { day: 'Qui', value: 3, heightPct: 34 },
-  { day: 'Sex', value: 6, heightPct: 62 },
-  { day: 'Sáb', value: 2, heightPct: 25, highlight: true },
+  { day: 'Dom', value: 1, heightPct: 14, highlight: false },
+  { day: 'Seg', value: 3, heightPct: 30, highlight: false },
+  { day: 'Ter', value: 2, heightPct: 21, highlight: false },
+  { day: 'Qua', value: 5, heightPct: 50, highlight: false },
+  { day: 'Qui', value: 3, heightPct: 34, highlight: false },
+  { day: 'Sex', value: 6, heightPct: 62, highlight: true },
+  { day: 'Sáb', value: 2, heightPct: 25, highlight: false },
 ];
 
 const ANOMALIAS_ETAPA_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 5, heightPct: 44 },
-  { day: 'Seg', value: 9, heightPct: 74 },
-  { day: 'Ter', value: 4, heightPct: 38 },
-  { day: 'Qua', value: 10, heightPct: 84 },
-  { day: 'Qui', value: 6, heightPct: 54 },
-  { day: 'Sex', value: 11, heightPct: 94 },
-  { day: 'Sáb', value: 6, heightPct: 47, highlight: true },
+  { day: 'Dom', value: 5, heightPct: 44, highlight: false },
+  { day: 'Seg', value: 9, heightPct: 74, highlight: false },
+  { day: 'Ter', value: 4, heightPct: 38, highlight: false },
+  { day: 'Qua', value: 10, heightPct: 84, highlight: false },
+  { day: 'Qui', value: 6, heightPct: 54, highlight: false },
+  { day: 'Sex', value: 11, heightPct: 94, highlight: true },
+  { day: 'Sáb', value: 6, heightPct: 47, highlight: false },
 ];
 
 const DEFAULT_QUEUE_ITEMS: readonly AnalysisQueueItem[] = [
   {
-    id: 'rr-2041',
+    id: 2041,
     code: 'RR-2041',
     gta: 'MS-0398471',
     driver: 'Jonas Ribeiro',
@@ -106,11 +100,19 @@ const DEFAULT_QUEUE_ITEMS: readonly AnalysisQueueItem[] = [
     status: 'Pendente',
   },
   {
-    id: 'rr-2040',
+    id: 2040,
     code: 'RR-2040',
     gta: 'MT-0114558',
     driver: 'Cleiton Alves',
     route: 'Boa Vista → Rondonópolis',
+    status: 'Em análise',
+  },
+  {
+    id: 2036,
+    code: 'RR-2036',
+    gta: 'Sem GTA',
+    driver: 'Cleiton Alves',
+    route: 'Rascunho de diário',
     status: 'Pendente',
   },
 ];
@@ -120,42 +122,81 @@ const ALERT_ITEMS: readonly AlertItem[] = [
     id: 'al-1',
     title: 'Sirene de ré com falha',
     subtitle: 'Placa LKD-2B45 • bloqueio de rota sugerido',
+    severity: 'bloqueio',
   },
   {
     id: 'al-2',
     title: 'CNH vencida',
     subtitle: 'Adriano Souza • motorista bloqueado',
+    severity: 'bloqueio',
   },
   {
     id: 'al-3',
     title: '2 mortes sem laudo',
     subtitle: 'Diário RR-2038 • reprovado na auditoria',
+    severity: 'alerta',
   },
   {
     id: 'al-4',
     title: 'Inspeção a vencer',
     subtitle: 'Placa QAP-3J88 • em 9 dias',
+    severity: 'alerta',
   },
 ];
 
 const ONGOING_ROUTES: readonly OngoingRouteItem[] = [
   {
-    id: 'rt-1',
+    id: 1,
     driver: 'Jonas Ribeiro',
     route: 'Santa Clara → Campo Grande',
     progressPct: 62,
+    stage: 'Transporte',
   },
   {
-    id: 'rt-2',
+    id: 2,
     driver: 'Marcos Tavares',
     route: 'Três Irmãos → Anápolis',
     progressPct: 28,
+    stage: 'Embarque',
   },
   {
-    id: 'rt-3',
+    id: 3,
     driver: 'Wesley Prado',
     route: 'Boa Vista → Rondonópolis',
     progressPct: 84,
+    stage: 'Desembarque',
+  },
+];
+
+interface AuditHistoryItem {
+  readonly id: string;
+  readonly code: string;
+  readonly status: 'Aprovado' | 'Reprovado' | 'Com ressalva';
+  readonly reason: string;
+  readonly timestamp: string;
+}
+
+const DEFAULT_AUDIT_HISTORY: readonly AuditHistoryItem[] = [
+  {
+    id: 'aud-1',
+    code: 'RR-2038',
+    status: 'Reprovado',
+    reason: '2 mortes sem laudo',
+    timestamp: '08/set 11:20',
+  },
+  {
+    id: 'aud-2',
+    code: 'RR-2039',
+    status: 'Aprovado',
+    reason: 'Sem anomalias • 150 bovinos',
+    timestamp: '08/set 12:05',
+  },
+  {
+    id: 'aud-3',
+    code: 'RR-2037',
+    status: 'Com ressalva',
+    reason: 'Atraso no desembarque',
+    timestamp: '07/set 16:40',
   },
 ];
 
@@ -163,29 +204,77 @@ function renderValue(value: string | number | null): string {
   return value === null || value === '' ? '—' : String(value);
 }
 
-function ReportRow({ report }: { report: RelatorioViagemResponse }) {
+function ReportRow({ report }: { readonly report: RelatorioViagemResponse }) {
   return (
     <tr>
       <td>{renderValue(report.numeroGta)}</td>
       <td>{renderValue(report.numeroNotaFiscal)}</td>
       <td>{renderValue(report.dataEmbarque)}</td>
-      <td><span className="dashboard-status">{report.status}</span></td>
+      <td>
+        <span className="dashboard-status">{report.status}</span>
+      </td>
       <td>{renderValue(report.motoristaId)}</td>
       <td>{renderValue(report.fazendaId)}</td>
     </tr>
   );
 }
 
-export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports'>('overview');
+export interface DashboardProps {
+  readonly initialTab?: 'overview' | 'audit' | 'reports';
+}
+
+export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
+  const { empresa } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Sincroniza a aba ativa com a URL e com o initialTab
+  const resolvedTab = useMemo<'overview' | 'audit' | 'reports'>(() => {
+    if (location.pathname === '/auditoria') return 'audit';
+    if (location.pathname === '/diarios') return 'reports';
+    if (location.pathname === '/visao-geral' || location.pathname === '/dashboard') return 'overview';
+    return initialTab;
+  }, [location.pathname, initialTab]);
+
+  const activeTab = resolvedTab;
+  const setActiveTab = useCallback((tab: 'overview' | 'audit' | 'reports') => {
+    if (tab === 'overview') navigate('/visao-geral');
+    else if (tab === 'audit') navigate('/auditoria');
+    else if (tab === 'reports') navigate('/diarios');
+  }, [navigate]);
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [auditStatusFilter, setAuditStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [pagina, setPagina] = useState(0);
 
+  const userDisplayName = empresa?.nomeFantasia || empresa?.razaoSocial || 'Administrador';
+  const empresaId = empresa?.id;
+
+  // Chamadas de API com carregamento assíncrono
   const fetchPage = useCallback(
     (signal: AbortSignal) => relatorioService.listar(pagina, PAGE_SIZE, signal),
     [pagina]
   );
   const { data, error, isError, isLoading, isSuccess, refetch } = useFetchData(fetchPage);
+
+  const { data: allReports } = useFetchData(
+    useCallback((signal: AbortSignal) => relatorioService.listarTodos(signal), [])
+  );
+  const { data: vehicles } = useFetchData(
+    useCallback(
+      (signal: AbortSignal) =>
+        empresaId ? caminhaoService.listar({ empresaId }, signal) : Promise.resolve([]),
+      [empresaId]
+    )
+  );
+  const { data: employees } = useFetchData(
+    useCallback(
+      (signal: AbortSignal) =>
+        empresaId ? funcionarioService.listarFuncionarios(empresaId, signal) : Promise.resolve([]),
+      [empresaId]
+    )
+  );
 
   const [filters, dispatchFilters] = useReducer(reportFiltersReducer, INITIAL_REPORT_FILTERS);
   const filteredReports = useMemo(
@@ -201,44 +290,183 @@ export function Dashboard() {
   const canGoBack = pagina > 0;
   const canGoForward = data !== null && pagina + 1 < data.totalPaginas;
 
-  // Filtra itens da Visão Geral se o usuário digitar na barra de busca do topo
+  // Resolução de dados e métricas com fallbacks elegantes ao protótipo
+  const reportSource = useMemo(() => allReports ?? data?.itens ?? [], [allReports, data?.itens]);
+  const series = useMemo(() => buildWeeklySeries(reportSource, startOfWeek(new Date())), [reportSource]);
+  const liveTotals = useMemo(() => totalsFromSeries(series), [series]);
+
+  const driverResolver = useMemo(() => {
+    const names = new Map<number, string>();
+    (employees ?? []).forEach((employee) => names.set(employee.id, employee.nome));
+    return (id: number | null) => (id ? names.get(id) ?? `Motorista #${id}` : 'Motorista não informado');
+  }, [employees]);
+
+  const liveQueue = useMemo(
+    () => buildAnalysisQueue(reportSource, driverResolver),
+    [reportSource, driverResolver]
+  );
+  const liveAlerts = useMemo(
+    () => buildAlerts(reportSource, vehicles ?? [], new Date()),
+    [reportSource, vehicles]
+  );
+  const liveRoutes = useMemo(
+    () => buildOngoingRoutes(reportSource, vehicles ?? [], driverResolver),
+    [reportSource, vehicles, driverResolver]
+  );
+
+  // Big numbers: usa dados ao vivo se existirem, ou o valor fiel do protótipo
+  const totalDiariosVal = liveTotals.diarios > 0 ? liveTotals.diarios : 15;
+  const pendentesDiariosVal = liveTotals.pendentes > 0 ? liveTotals.pendentes : 8;
+  const totalBovinosVal =
+    liveTotals.bovinos > 0 ? liveTotals.bovinos.toLocaleString('pt-BR') : '4.299';
+  const mortosBovinosVal = liveTotals.mortos > 0 ? liveTotals.mortos : 67;
+  const taxaMortalidadeVal =
+    liveTotals.mortalidadePct !== null && liveTotals.bovinos > 0
+      ? formatPercent(liveTotals.mortalidadePct)
+      : '1,56%';
+  const anomaliasEmbarqueVal =
+    liveTotals.anomaliasEmbarque > 0 ? liveTotals.anomaliasEmbarque : 7;
+  const anomaliasDesembarqueVal =
+    liveTotals.anomaliasDesembarque > 0 ? liveTotals.anomaliasDesembarque : 4;
+
+  // Gráficos semanais: usa dados reais se calculados, senão usa os gráficos do protótipo
+  const hasLiveChartData = series.desembarque.some((v) => v > 0);
+  const chartBars = useMemo(() => {
+    if (!hasLiveChartData) {
+      return {
+        desembarque: VOLUME_DESEMBARQUE_BARS,
+        embarque: VOLUME_EMBARQUE_BARS,
+        mortes: MORTES_REGISTRADAS_BARS,
+        anomalias: ANOMALIAS_ETAPA_BARS,
+      };
+    }
+    const makeBars = (values: number[], ceiling: number): ChartDayBar[] =>
+      values.map((value, index) => ({
+        day: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][index],
+        value,
+        heightPct: ceiling ? Math.max(3, Math.round((value / ceiling) * 100)) : 0,
+        highlight: index === new Date().getDay(),
+      }));
+
+    return {
+      desembarque: makeBars(series.desembarque, niceCeiling(Math.max(...series.desembarque, 1))),
+      embarque: makeBars(series.embarque, niceCeiling(Math.max(...series.embarque, 1))),
+      mortes: makeBars(series.mortes, niceCeiling(Math.max(...series.mortes, 1))),
+      anomalias: makeBars(
+        series.anomaliasEmbarque.map((val, i) => val + series.anomaliasDesembarque[i]),
+        niceCeiling(Math.max(...series.anomaliasEmbarque, ...series.anomaliasDesembarque, 1))
+      ),
+    };
+  }, [hasLiveChartData, series]);
+
+  const ceilings = useMemo(() => {
+    return {
+      desembarque: hasLiveChartData
+        ? niceCeiling(Math.max(...series.desembarque, 1))
+        : 3000,
+      embarque: hasLiveChartData
+        ? niceCeiling(Math.max(...series.embarque, 1))
+        : 900,
+      mortes: hasLiveChartData
+        ? niceCeiling(Math.max(...series.mortes, 1))
+        : 8,
+      anomalias: hasLiveChartData
+        ? niceCeiling(
+            Math.max(
+              ...series.anomaliasEmbarque.map(
+                (val, i) => val + series.anomaliasDesembarque[i]
+              ),
+              1
+            )
+          )
+        : 12,
+    };
+  }, [hasLiveChartData, series]);
+
+  // Listas filtradas com busca
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
-  const visibleQueueItems = useMemo(() => {
-    if (!normalizedSearch) return DEFAULT_QUEUE_ITEMS;
-    return DEFAULT_QUEUE_ITEMS.filter(
+  const queueSource = liveQueue.length > 0 ? liveQueue : DEFAULT_QUEUE_ITEMS;
+  const visibleQueue = useMemo(() => {
+    if (!normalizedSearch) return queueSource;
+    return queueSource.filter(
       (item) =>
         item.code.toLowerCase().includes(normalizedSearch) ||
         item.gta.toLowerCase().includes(normalizedSearch) ||
         item.driver.toLowerCase().includes(normalizedSearch) ||
         item.route.toLowerCase().includes(normalizedSearch)
     );
-  }, [normalizedSearch]);
+  }, [queueSource, normalizedSearch]);
 
-  const visibleOngoingRoutes = useMemo(() => {
-    if (!normalizedSearch) return ONGOING_ROUTES;
-    return ONGOING_ROUTES.filter(
-      (item) =>
-        item.driver.toLowerCase().includes(normalizedSearch) ||
-        item.route.toLowerCase().includes(normalizedSearch)
-    );
-  }, [normalizedSearch]);
-
+  const alertsSource = liveAlerts.length > 0 ? liveAlerts : ALERT_ITEMS;
   const visibleAlerts = useMemo(() => {
-    if (!normalizedSearch) return ALERT_ITEMS;
-    return ALERT_ITEMS.filter(
+    if (!normalizedSearch) return alertsSource;
+    return alertsSource.filter(
       (item) =>
         item.title.toLowerCase().includes(normalizedSearch) ||
         item.subtitle.toLowerCase().includes(normalizedSearch)
     );
-  }, [normalizedSearch]);
+  }, [alertsSource, normalizedSearch]);
+
+  const routesSource = liveRoutes.length > 0 ? liveRoutes : ONGOING_ROUTES;
+  const visibleRoutes = useMemo(() => {
+    if (!normalizedSearch) return routesSource;
+    return routesSource.filter(
+      (item) =>
+        item.driver.toLowerCase().includes(normalizedSearch) ||
+        item.route.toLowerCase().includes(normalizedSearch)
+    );
+  }, [routesSource, normalizedSearch]);
+
+  // Auditoria: histórico e fila
+  const visibleAuditHistory = useMemo(() => {
+    return DEFAULT_AUDIT_HISTORY.filter((item) => {
+      const matchSearch =
+        !normalizedSearch ||
+        item.code.toLowerCase().includes(normalizedSearch) ||
+        item.reason.toLowerCase().includes(normalizedSearch);
+      if (!matchSearch) return false;
+      if (auditStatusFilter === 'approved') return item.status === 'Aprovado';
+      if (auditStatusFilter === 'rejected') return item.status === 'Reprovado';
+      return true;
+    });
+  }, [normalizedSearch, auditStatusFilter]);
+
+  const visibleAuditQueue = useMemo(() => {
+    if (auditStatusFilter === 'approved' || auditStatusFilter === 'rejected') return [];
+    return visibleQueue;
+  }, [visibleQueue, auditStatusFilter]);
+
+  // Navegação de abas
+  const handleTabChange = (tab: 'overview' | 'audit' | 'reports') => {
+    setActiveTab(tab);
+    if (tab === 'overview') navigate('/visao-geral');
+    else if (tab === 'audit') navigate('/auditoria');
+    else if (tab === 'reports') navigate('/diarios');
+  };
+
+  const handleCtaClick = () => {
+    if (activeTab === 'overview') handleTabChange('reports');
+    else if (activeTab === 'audit') handleTabChange('reports');
+    else handleTabChange('overview');
+  };
 
   return (
-    <div className="vg-shell">
-      {/* TOPBAR */}
+    <div className={`vg-shell ${theme === 'dark' ? 'dark' : ''}`}>
+      {/* ==================================================================
+          TOPBAR
+          ================================================================== */}
       <header className="vg-topbar">
         <div className="vg-topbar-left">
-          <div className="vg-brand">
+          <div
+            className="vg-brand"
+            onClick={() => handleTabChange('overview')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') handleTabChange('overview');
+            }}
+          >
             <BullBrandLogo />
             <div className="vg-brand-text">
               <span className="vg-brand-title">
@@ -254,11 +482,43 @@ export function Dashboard() {
 
           <div className="vg-page-heading">
             <h1 id="dashboard-heading">
-              {activeTab === 'overview' ? 'Visão Geral' : 'Diários de Viagem'}
+              {activeTab === 'overview'
+                ? 'Visão Geral'
+                : activeTab === 'audit'
+                ? 'Auditoria'
+                : 'Diários de Viagem'}
             </h1>
             <p className="vg-page-subtitle">
-              Terça-feira, 08 de setembro de 2026 • 3 rotas em andamento
+              {activeTab === 'overview'
+                ? 'Terça-feira, 08 de setembro de 2026 • 3 rotas em andamento'
+                : activeTab === 'audit'
+                ? '2 diários aguardando parecer • 3 análises concluídas'
+                : 'Dados sincronizados com a operação'}
             </p>
+          </div>
+        </div>
+
+        {/* Toggle Pill central: Visão Geral | Auditoria */}
+        <div className="vg-topbar-center">
+          <div className="vg-toggle-pill" role="tablist" aria-label="Visualização do painel">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'overview'}
+              className={`vg-pill-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => handleTabChange('overview')}
+            >
+              Visão Geral
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'audit'}
+              className={`vg-pill-btn ${activeTab === 'audit' ? 'active' : ''}`}
+              onClick={() => handleTabChange('audit')}
+            >
+              Auditoria
+            </button>
           </div>
         </div>
 
@@ -281,25 +541,41 @@ export function Dashboard() {
             />
           </div>
 
+          {/* Botão de alternar tema Light/Dark */}
+          <button
+            type="button"
+            className="vg-theme-btn"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            title={theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
+          >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+
+          {/* Botão do sino de notificações com badge verde */}
           <button
             type="button"
             className="vg-bell-btn"
             aria-label="Notificações"
-            title="Notificações"
+            title="Notificações operacionais"
           >
             <TopbarBellIcon />
           </button>
 
-          <button
-            type="button"
-            className="vg-cta-btn"
-            onClick={() => setActiveTab((prev) => (prev === 'overview' ? 'reports' : 'overview'))}
-          >
-            {activeTab === 'overview' ? 'Ver diários →' : '← Visão Geral'}
+          {/* Botão CTA dinâmico */}
+          <button type="button" className="vg-cta-btn" onClick={handleCtaClick}>
+            {activeTab === 'overview'
+              ? 'Ver diários →'
+              : activeTab === 'audit'
+              ? 'Analisar próximo →'
+              : '← Visão Geral'}
           </button>
         </div>
       </header>
 
+      {/* ==================================================================
+          CORPO PRINCIPAL (SIDEBAR + MAIN)
+          ================================================================== */}
       <div className="vg-body">
         {/* SIDEBAR */}
         <aside className="vg-sidebar" aria-label="Menu lateral principal">
@@ -307,7 +583,7 @@ export function Dashboard() {
             <button
               type="button"
               className={`vg-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('overview')}
+              onClick={() => handleTabChange('overview')}
               aria-label="Visão Geral"
               title="Visão Geral"
             >
@@ -316,7 +592,7 @@ export function Dashboard() {
             <button
               type="button"
               className={`vg-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
-              onClick={() => setActiveTab('reports')}
+              onClick={() => handleTabChange('reports')}
               aria-label="Diários e Relatórios"
               title="Diários e Relatórios"
             >
@@ -324,8 +600,8 @@ export function Dashboard() {
             </button>
             <button
               type="button"
-              className="vg-nav-item"
-              onClick={() => setActiveTab('reports')}
+              className={`vg-nav-item ${activeTab === 'audit' ? 'active' : ''}`}
+              onClick={() => handleTabChange('audit')}
               aria-label="Auditorias e Pastas"
               title="Auditorias e Pastas"
             >
@@ -334,6 +610,7 @@ export function Dashboard() {
             <button
               type="button"
               className="vg-nav-item"
+              onClick={() => navigate('/motoristas')}
               aria-label="Motoristas e Equipe"
               title="Motoristas e Equipe"
             >
@@ -342,6 +619,7 @@ export function Dashboard() {
             <button
               type="button"
               className="vg-nav-item"
+              onClick={() => navigate('/frota')}
               aria-label="Frota de Caminhões"
               title="Frota de Caminhões"
             >
@@ -350,6 +628,7 @@ export function Dashboard() {
             <button
               type="button"
               className="vg-nav-item"
+              onClick={() => navigate('/fazenda-unidades')}
               aria-label="Unidades e Fazendas"
               title="Unidades e Fazendas"
             >
@@ -369,6 +648,7 @@ export function Dashboard() {
             <button
               type="button"
               className="vg-nav-item"
+              onClick={() => navigate('/configuracao')}
               aria-label="Configurações"
               title="Configurações"
             >
@@ -377,12 +657,13 @@ export function Dashboard() {
 
             <div className="vg-sidebar-divider" aria-hidden="true" />
 
-            <div className="vg-avatar-wrapper" title="Perfil do Administrador">
-              <img
-                src={avatarUser}
-                alt="Avatar da usuária logada"
-                className="vg-avatar-img"
-              />
+            <div
+              className="vg-avatar-wrapper"
+              title={`Perfil: ${userDisplayName}`}
+              onClick={() => navigate('/configuracao')}
+              style={{ cursor: 'pointer' }}
+            >
+              <GenericUserAvatar size={38} name={userDisplayName} />
             </div>
           </div>
         </aside>
@@ -394,7 +675,10 @@ export function Dashboard() {
           aria-labelledby="dashboard-heading"
           tabIndex={-1}
         >
-          {activeTab === 'overview' ? (
+          {/* ==============================================================
+              ABA 1: VISÃO GERAL (clip0_939_11)
+              ============================================================== */}
+          {activeTab === 'overview' && (
             <div className="vg-grid-layout">
               {/* LINHA 1: 4 CARDS DE KPI */}
               <section className="vg-kpi-row" aria-label="Indicadores principais da semana">
@@ -413,16 +697,14 @@ export function Dashboard() {
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Total</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">
-                          {data && data.total > 0 ? data.total : 15}
-                        </strong>
+                        <strong className="vg-metric-number">{totalDiariosVal}</strong>
                         <span className="vg-metric-delta vg-delta-positive">+20,0%</span>
                       </div>
                     </div>
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Pendentes</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">8</strong>
+                        <strong className="vg-metric-number">{pendentesDiariosVal}</strong>
                       </div>
                     </div>
                   </div>
@@ -443,14 +725,14 @@ export function Dashboard() {
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Total</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">4.299</strong>
+                        <strong className="vg-metric-number">{totalBovinosVal}</strong>
                         <span className="vg-metric-delta vg-delta-positive">+12,0%</span>
                       </div>
                     </div>
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Mortos</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">67</strong>
+                        <strong className="vg-metric-number">{mortosBovinosVal}</strong>
                         <span className="vg-metric-delta vg-delta-negative">+5,0%</span>
                       </div>
                     </div>
@@ -472,7 +754,7 @@ export function Dashboard() {
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Total</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">1,56%</strong>
+                        <strong className="vg-metric-number">{taxaMortalidadeVal}</strong>
                         <span className="vg-metric-delta vg-delta-negative">+2,0%</span>
                       </div>
                     </div>
@@ -500,14 +782,14 @@ export function Dashboard() {
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Embarque</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">7</strong>
+                        <strong className="vg-metric-number">{anomaliasEmbarqueVal}</strong>
                         <span className="vg-metric-delta vg-delta-positive">-2,0%</span>
                       </div>
                     </div>
                     <div className="vg-metric-col">
                       <span className="vg-metric-label">Desembarque</span>
                       <div className="vg-metric-val-row">
-                        <strong className="vg-metric-number">4</strong>
+                        <strong className="vg-metric-number">{anomaliasDesembarqueVal}</strong>
                         <span className="vg-metric-delta vg-delta-positive">-5,0%</span>
                       </div>
                     </div>
@@ -515,119 +797,60 @@ export function Dashboard() {
                 </article>
               </section>
 
-              {/* LINHA 2: GRÁFICOS DE BARRAS */}
-              <section className="vg-charts-row" aria-label="Gráficos semanais de operação">
-                {/* Gráfico Principal: Volume de desembarque */}
-                <article className="vg-card vg-chart-card vg-chart-large">
-                  <div className="vg-chart-header">
-                    <h2 className="vg-chart-title-lg">Volume de desembarque</h2>
-                    <span className="vg-period-badge">Esta Semana ⌄</span>
-                  </div>
-
-                  <div className="vg-chart-body-lg">
-                    <div className="vg-chart-y-axis" aria-hidden="true">
-                      <span>3000</span>
-                      <span>2000</span>
-                      <span>1000</span>
-                      <span>0</span>
-                    </div>
-
-                    <div className="vg-bars-container-lg">
-                      {VOLUME_DESEMBARQUE_BARS.map((bar) => (
-                        <div key={bar.day} className="vg-bar-col-lg">
-                          <div className="vg-bar-track-lg">
-                            <div
-                              className={`vg-bar-fill-lg ${
-                                bar.highlight ? 'vg-bar-green' : 'vg-bar-blue'
-                              }`}
-                              style={{ height: `${bar.heightPct}%` }}
-                              title={`${bar.day}: ${bar.value} animais`}
-                            />
-                          </div>
-                          <span className="vg-bar-label-lg">{bar.day}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
+              {/* LINHA 2: GRÁFICOS DE BARRAS INTERATIVOS COM RÓTULOS E DOWNLOAD (CSV & IMAGEM) */}
+              <section className="vg-charts-row" aria-label="Gráficos semanais de operação com interatividade e exportação">
+                {/* Gráfico 1: Volume de desembarque */}
+                <InteractiveBarChart
+                  id="desembarque"
+                  title="Volume de desembarque"
+                  subtitle="Animais descarregados nos frigoríficos"
+                  unit="bovinos"
+                  bars={chartBars.desembarque}
+                  ceiling={ceilings.desembarque}
+                  variant="large"
+                  colorScheme="blue"
+                  isDarkMode={theme === 'dark'}
+                  yAxisSteps={[ceilings.desembarque, Math.round(ceilings.desembarque * 0.66), Math.round(ceilings.desembarque * 0.33), 0]}
+                />
 
                 {/* Gráfico 2: Volume de embarque */}
-                <article className="vg-card vg-chart-card vg-chart-small">
-                  <div className="vg-chart-header">
-                    <h2 className="vg-chart-title-sm">Volume de embarque</h2>
-                    <span className="vg-period-badge-sm">Esta semana</span>
-                  </div>
-                  <span className="vg-chart-ceiling">900</span>
-
-                  <div className="vg-bars-container-sm">
-                    {VOLUME_EMBARQUE_BARS.map((bar) => (
-                      <div key={bar.day} className="vg-bar-col-sm">
-                        <div className="vg-bar-track-sm">
-                          <div
-                            className={`vg-bar-fill-sm ${
-                              bar.highlight ? 'vg-bar-green' : 'vg-bar-blue'
-                            }`}
-                            style={{ height: `${bar.heightPct}%` }}
-                            title={`${bar.day}: ${bar.value} animais`}
-                          />
-                        </div>
-                        <span className="vg-bar-label-sm">{bar.day}</span>
-                      </div>
-                    ))}
-                  </div>
-                </article>
+                <InteractiveBarChart
+                  id="embarque"
+                  title="Volume de embarque"
+                  subtitle="Animais embarcados nas fazendas"
+                  unit="bovinos"
+                  bars={chartBars.embarque}
+                  ceiling={ceilings.embarque}
+                  variant="small"
+                  colorScheme="blue"
+                  isDarkMode={theme === 'dark'}
+                />
 
                 {/* Gráfico 3: Mortes registradas */}
-                <article className="vg-card vg-chart-card vg-chart-small">
-                  <div className="vg-chart-header">
-                    <h2 className="vg-chart-title-sm">Mortes registradas</h2>
-                    <span className="vg-period-badge-sm">Esta semana</span>
-                  </div>
-                  <span className="vg-chart-ceiling">8</span>
-
-                  <div className="vg-bars-container-sm">
-                    {MORTES_REGISTRADAS_BARS.map((bar) => (
-                      <div key={bar.day} className="vg-bar-col-sm">
-                        <div className="vg-bar-track-sm">
-                          <div
-                            className={`vg-bar-fill-sm ${
-                              bar.highlight ? 'vg-bar-green' : 'vg-bar-red'
-                            }`}
-                            style={{ height: `${bar.heightPct}%` }}
-                            title={`${bar.day}: ${bar.value} mortes`}
-                          />
-                        </div>
-                        <span className="vg-bar-label-sm">{bar.day}</span>
-                      </div>
-                    ))}
-                  </div>
-                </article>
+                <InteractiveBarChart
+                  id="mortes"
+                  title="Mortes registradas"
+                  subtitle="Óbitos ocorridos no trajeto"
+                  unit="mortes"
+                  bars={chartBars.mortes}
+                  ceiling={ceilings.mortes}
+                  variant="small"
+                  colorScheme="red"
+                  isDarkMode={theme === 'dark'}
+                />
 
                 {/* Gráfico 4: Anomalias por etapa */}
-                <article className="vg-card vg-chart-card vg-chart-small">
-                  <div className="vg-chart-header">
-                    <h2 className="vg-chart-title-sm">Anomalias por etapa</h2>
-                    <span className="vg-period-badge-sm">Esta semana</span>
-                  </div>
-                  <span className="vg-chart-ceiling">12</span>
-
-                  <div className="vg-bars-container-sm">
-                    {ANOMALIAS_ETAPA_BARS.map((bar) => (
-                      <div key={bar.day} className="vg-bar-col-sm">
-                        <div className="vg-bar-track-sm">
-                          <div
-                            className={`vg-bar-fill-sm ${
-                              bar.highlight ? 'vg-bar-green' : 'vg-bar-orange'
-                            }`}
-                            style={{ height: `${bar.heightPct}%` }}
-                            title={`${bar.day}: ${bar.value} anomalias`}
-                          />
-                        </div>
-                        <span className="vg-bar-label-sm">{bar.day}</span>
-                      </div>
-                    ))}
-                  </div>
-                </article>
+                <InteractiveBarChart
+                  id="anomalias"
+                  title="Anomalias por etapa"
+                  subtitle="Ocorrências registradas na rota"
+                  unit="anomalias"
+                  bars={chartBars.anomalias}
+                  ceiling={ceilings.anomalias}
+                  variant="small"
+                  colorScheme="orange"
+                  isDarkMode={theme === 'dark'}
+                />
               </section>
 
               {/* LINHA 3: FILA DE ANÁLISE, ALERTAS E ROTAS EM ANDAMENTO */}
@@ -640,7 +863,7 @@ export function Dashboard() {
                   </div>
 
                   <div className="vg-queue-list">
-                    {visibleQueueItems.map((item) => (
+                    {visibleQueue.slice(0, 2).map((item) => (
                       <div key={item.id} className="vg-queue-item">
                         <div className="vg-queue-info">
                           <strong className="vg-queue-code">
@@ -651,11 +874,19 @@ export function Dashboard() {
                           </span>
                         </div>
                         <div className="vg-queue-actions">
-                          <span className="vg-badge-pending">{item.status}</span>
+                          <span
+                            className={
+                              item.status === 'Em análise'
+                                ? 'vg-badge-analyzing'
+                                : 'vg-badge-pending'
+                            }
+                          >
+                            {item.status}
+                          </span>
                           <button
                             type="button"
                             className="vg-analyze-link"
-                            onClick={() => setActiveTab('reports')}
+                            onClick={() => handleTabChange('audit')}
                           >
                             Analisar →
                           </button>
@@ -672,7 +903,7 @@ export function Dashboard() {
                   </div>
 
                   <div className="vg-alerts-list">
-                    {visibleAlerts.map((alert) => (
+                    {visibleAlerts.slice(0, 4).map((alert) => (
                       <div key={alert.id} className="vg-alert-item">
                         <span className="vg-alert-icon">
                           <AlertTriangleYellowIcon />
@@ -693,7 +924,7 @@ export function Dashboard() {
                   </div>
 
                   <div className="vg-routes-list">
-                    {visibleOngoingRoutes.map((route) => (
+                    {visibleRoutes.slice(0, 3).map((route) => (
                       <div key={route.id} className="vg-route-item">
                         <div className="vg-route-top">
                           <RouteActiveDotIcon />
@@ -714,8 +945,196 @@ export function Dashboard() {
                 </article>
               </section>
             </div>
-          ) : (
-            /* ABA DE LISTAGEM COMPLETA DE DIÁRIOS / RELATÓRIOS DA API */
+          )}
+
+          {/* ==============================================================
+              ABA 2: AUDITORIA (clip4_939_11)
+              ============================================================== */}
+          {activeTab === 'audit' && (
+            <div className="vg-audit-layout">
+              {/* LINHA DE INDICADORES DE AUDITORIA */}
+              <section className="vg-audit-kpi-row" aria-label="Indicadores de auditoria">
+                <article className="vg-card vg-audit-kpi-card">
+                  <div className="vg-audit-kpi-header">
+                    <span className="vg-audit-kpi-badge">Fila de análise</span>
+                    <button
+                      type="button"
+                      className="vg-analyze-link"
+                      onClick={() => setAuditStatusFilter('pending')}
+                    >
+                      Ver fila →
+                    </button>
+                  </div>
+                  <div className="vg-audit-kpi-body">
+                    <strong className="vg-audit-kpi-number">{visibleQueue.length}</strong>
+                    <span className="vg-audit-kpi-sub">Prazo de análise: 24h</span>
+                  </div>
+                </article>
+
+                <article className="vg-card vg-audit-kpi-card">
+                  <div className="vg-audit-kpi-header">
+                    <span className="vg-audit-kpi-badge">Aprovados na semana</span>
+                    <button
+                      type="button"
+                      className="vg-analyze-link"
+                      onClick={() => setAuditStatusFilter('approved')}
+                    >
+                      Ver aprovados →
+                    </button>
+                  </div>
+                  <div className="vg-audit-kpi-body">
+                    <strong className="vg-audit-kpi-number">2</strong>
+                    <span className="vg-audit-kpi-sub">Sem ressalvas operacionais</span>
+                  </div>
+                </article>
+
+                <article className="vg-card vg-audit-kpi-card">
+                  <div className="vg-audit-kpi-header">
+                    <span className="vg-audit-kpi-badge">Reprovados na semana</span>
+                    <button
+                      type="button"
+                      className="vg-analyze-link"
+                      onClick={() => setAuditStatusFilter('rejected')}
+                    >
+                      Ver reprovados →
+                    </button>
+                  </div>
+                  <div className="vg-audit-kpi-body">
+                    <strong className="vg-audit-kpi-number">1</strong>
+                    <span className="vg-audit-kpi-sub">Mortes sem laudo</span>
+                  </div>
+                </article>
+              </section>
+
+              {/* BARRA DE FILTROS DE STATUS */}
+              <div className="vg-audit-filter-bar">
+                <div className="vg-status-filters" role="group" aria-label="Filtrar por status">
+                  <button
+                    type="button"
+                    className={`vg-status-filter-btn ${auditStatusFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setAuditStatusFilter('all')}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    className={`vg-status-filter-btn ${auditStatusFilter === 'pending' ? 'active' : ''}`}
+                    onClick={() => setAuditStatusFilter('pending')}
+                  >
+                    Pendentes
+                  </button>
+                  <button
+                    type="button"
+                    className={`vg-status-filter-btn ${auditStatusFilter === 'approved' ? 'active' : ''}`}
+                    onClick={() => setAuditStatusFilter('approved')}
+                  >
+                    Aprovados
+                  </button>
+                  <button
+                    type="button"
+                    className={`vg-status-filter-btn ${auditStatusFilter === 'rejected' ? 'active' : ''}`}
+                    onClick={() => setAuditStatusFilter('rejected')}
+                  >
+                    Reprovados
+                  </button>
+                </div>
+              </div>
+
+              {/* GRID PRINCIPAL DE AUDITORIA: FILA + HISTÓRICO */}
+              <div className="vg-audit-grid">
+                {/* Coluna 1: Fila de análise */}
+                <article className="vg-card vg-audit-card">
+                  <div className="vg-bottom-header">
+                    <h2 className="vg-bottom-title">Fila de análise</h2>
+                    <p className="vg-bottom-subtitle">Diários aguardando parecer técnico</p>
+                  </div>
+
+                  <div className="vg-audit-list">
+                    {visibleAuditQueue.length === 0 ? (
+                      <p className="vg-audit-item-meta" style={{ padding: '16px 0' }}>
+                        Nenhum diário pendente no filtro selecionado.
+                      </p>
+                    ) : (
+                      visibleAuditQueue.map((item) => (
+                        <div key={item.id} className="vg-audit-item">
+                          <div className="vg-audit-item-info">
+                            <strong className="vg-audit-item-title">
+                              {item.code} • {item.gta}
+                            </strong>
+                            <span className="vg-audit-item-meta">
+                              {item.driver} • {item.route}
+                            </span>
+                          </div>
+                          <div className="vg-audit-item-right">
+                            <span
+                              className={
+                                item.status === 'Em análise'
+                                  ? 'vg-badge-analyzing'
+                                  : 'vg-badge-pending'
+                              }
+                            >
+                              {item.status}
+                            </span>
+                            <button
+                              type="button"
+                              className="vg-analyze-link"
+                              onClick={() => handleTabChange('reports')}
+                            >
+                              Analisar →
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </article>
+
+                {/* Coluna 2: Histórico de pareceres */}
+                <article className="vg-card vg-audit-card">
+                  <div className="vg-bottom-header">
+                    <h2 className="vg-bottom-title">Histórico de pareceres</h2>
+                    <p className="vg-bottom-subtitle">Últimas auditorias registradas</p>
+                  </div>
+
+                  <div className="vg-audit-list">
+                    {visibleAuditHistory.length === 0 ? (
+                      <p className="vg-audit-item-meta" style={{ padding: '16px 0' }}>
+                        Nenhum registro histórico no filtro selecionado.
+                      </p>
+                    ) : (
+                      visibleAuditHistory.map((item) => (
+                        <div key={item.id} className="vg-audit-item">
+                          <div className="vg-audit-item-info">
+                            <strong className="vg-audit-item-title">{item.code}</strong>
+                            <span className="vg-audit-item-meta">{item.reason}</span>
+                          </div>
+                          <div className="vg-audit-item-right">
+                            <span
+                              className={
+                                item.status === 'Aprovado'
+                                  ? 'vg-badge-approved'
+                                  : item.status === 'Reprovado'
+                                  ? 'vg-badge-rejected'
+                                  : 'vg-badge-pending'
+                              }
+                            >
+                              {item.status}
+                            </span>
+                            <span className="vg-audit-timestamp">{item.timestamp}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </article>
+              </div>
+            </div>
+          )}
+
+          {/* ==============================================================
+              ABA 3: DIÁRIOS & RELATÓRIOS DA API
+              ============================================================== */}
+          {activeTab === 'reports' && (
             <div className="vg-reports-view">
               <header className="dashboard-header">
                 <div>

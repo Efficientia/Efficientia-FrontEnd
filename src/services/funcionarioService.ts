@@ -30,9 +30,13 @@ export const funcionarioService = {
    * Lista todos os funcionários vinculados à empresa.
    * Rota: GET /api/v1/empresas/{empresaId}/funcionarios
    */
-  async listarFuncionarios(empresaId: number | string): Promise<FuncionarioEmpresaResponse[]> {
+  async listarFuncionarios(
+    empresaId: number | string,
+    signal?: AbortSignal
+  ): Promise<FuncionarioEmpresaResponse[]> {
     const { data } = await apiClient.get<FuncionarioEmpresaResponse[]>(
-      `/api/v1/empresas/${empresaId}/funcionarios`
+      `/api/v1/empresas/${empresaId}/funcionarios`,
+      { signal }
     );
     return data;
   },

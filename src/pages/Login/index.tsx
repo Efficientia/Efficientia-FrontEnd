@@ -1,360 +1,200 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { normalizeApiError, type ApiRequestError } from '../../services/api';
-import type { LoginAdminRequest, LoginRequest } from '../../types/auth';
-import { DASHBOARD_ALLOWED_ROLES } from '../../constants/auth';
-import { formatCnpj, formatCpf } from '../../utils/validators';
+import { formatCnpj } from '../../utils/validators';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
+import efficientiaMark from '../../assets/efficientia-mark.svg';
+import efficientiaWordmark from '../../assets/efficientia-wordmark.svg';
 import './Login.css';
 
-type LoginMode = 'admin' | 'operacional';
+function EyeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="23" x2="23" y2="1" />
+    </svg>
+  );
+}
 
 export function Login() {
   const navigate = useNavigate();
-  const { loginAdmin, loginFuncionario } = useAuth();
+  const { loginAdmin } = useAuth();
 
-  const [mode, setMode] = useState<LoginMode>('admin');
-
-  // Modo Administrador (POST /api/v1/auth/adm/login)
-  const [adminIdentifier, setAdminIdentifier] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-
-  // Modo Operacional (POST /api/v1/auth/login: CPF + Email + Codigo + Senha)
-  const [opCpf, setOpCpf] = useState('');
-  const [opEmail, setOpEmail] = useState('');
-  const [opCompanyCode, setOpCompanyCode] = useState('');
-  const [opPassword, setOpPassword] = useState('');
-
+  const [cnpj, setCnpj] = useState('');
+  const [senha, setSenha] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<ApiRequestError | null>(null);
   const [notice, setNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Validações Admin
-  const cleanAdminDigits = adminIdentifier.replace(/\D/g, '');
-  const isAdminCnpj = cleanAdminDigits.length === 14;
-  const isAdminEmail = adminIdentifier.includes('@') && adminIdentifier.trim().length >= 5;
-  const isAdminIdentifierValid = isAdminCnpj || isAdminEmail || cleanAdminDigits.length === 11;
-  const isAdminPasswordValid = adminPassword.trim().length >= 6;
-  const isAdminFormValid = isAdminIdentifierValid && isAdminPasswordValid;
+  function getPostLoginPath(): string {
+    const pendingStep = localStorage.getItem('@efficientia:onboarding:current_step');
+    if (pendingStep === '2') return '/onboarding/etapa-2';
+    if (pendingStep === '3') return '/onboarding/etapa-3';
+    const isCompleted = localStorage.getItem('@efficientia:onboarding:completed') === 'true';
+    if (!isCompleted && pendingStep === '1') return '/onboarding';
+    return '/visao-geral';
+  }
 
-  // Validações Operacional
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const cleanOpCpf = opCpf.replace(/\D/g, '');
-  const isOpCpfValid = cleanOpCpf.length === 11;
-  const isOpEmailValid = emailRegex.test(opEmail.trim());
-  const isOpCompanyCodeValid = opCompanyCode.trim().length >= 2;
-  const isOpPasswordValid = opPassword.trim().length >= 6;
-  const isOperacionalFormValid =
-    isOpCpfValid && isOpEmailValid && isOpCompanyCodeValid && isOpPasswordValid;
+  const cleanCnpjDigits = cnpj.replace(/\D/g, '');
+  const isCnpjValid =
+    cleanCnpjDigits.length === 14 ||
+    (cnpj.includes('@') && cnpj.trim().length >= 5) ||
+    cleanCnpjDigits.length === 11;
+  const isSenhaValid = senha.trim().length >= 6;
+  const isFormValid = isCnpjValid && isSenhaValid;
 
-  const isFormValid = mode === 'admin' ? isAdminFormValid : isOperacionalFormValid;
+  function handleCnpjChange(e: ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    if (val.includes('@')) {
+      setCnpj(val);
+    } else {
+      setCnpj(formatCnpj(val));
+    }
+    if (error) setError(null);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setTouched({ cnpj: true, senha: true });
+    if (!isFormValid) return;
+
+    setIsSubmitting(true);
     setError(null);
     setNotice('');
 
-    if (mode === 'admin') {
-      setTouched({ adminIdentifier: true, adminPassword: true });
-      if (!isAdminFormValid) return;
+    try {
+      const cleanDigits = cnpj.replace(/\D/g, '');
 
-      setIsSubmitting(true);
       try {
-        let loginEmail = adminIdentifier.trim();
-
-        // Se for CNPJ, consulta o e-mail corporativo correspondente ou envia o identificador
-        if (isAdminCnpj) {
+        const email = cnpj.includes('@') ? cnpj.trim().toLowerCase() : `${cleanDigits}@empresa.local`;
+        await loginAdmin({
+          email,
+          cnpj: cleanDigits.length === 14 ? cleanDigits : undefined,
+          senha,
+        });
+        navigate(getPostLoginPath(), { replace: true });
+        return;
+      } catch (adminErr) {
+        if (cleanDigits.length === 14) {
           try {
-            const empresaInfo = await authService.loginEmpresa({ identificador: cleanAdminDigits });
-            if (empresaInfo.empresa?.emailCorporativo) {
-              loginEmail = empresaInfo.empresa.emailCorporativo;
+            const empRes = await authService.loginEmpresa({
+              cnpj: cleanDigits,
+              identificador: cleanDigits,
+              senha,
+            });
+            if (empRes?.token) {
+              navigate(getPostLoginPath(), { replace: true });
+              return;
             }
           } catch {
-            // Se falhar a busca, mantém o identificador informado
+            // mantém erro original
           }
         }
-
-        const request: LoginAdminRequest = {
-          email: loginEmail,
-          senha: adminPassword,
-          ...(isAdminCnpj ? { cnpj: cleanAdminDigits } : {}),
-        };
-
-        const roles = await loginAdmin(request);
-        const canOpenDashboard = roles.some((role) =>
-          DASHBOARD_ALLOWED_ROLES.some((allowedRole) => allowedRole === role.toUpperCase())
-        );
-
-        if (canOpenDashboard) {
-          navigate('/dashboard', { replace: true });
-        } else {
-          setNotice('Autenticação corporativa concluída com sucesso!');
-        }
-      } catch (requestError) {
-        setError(normalizeApiError(requestError));
-      } finally {
-        setIsSubmitting(false);
+        throw adminErr;
       }
-    } else {
-      setTouched({ opCpf: true, opEmail: true, opCompanyCode: true, opPassword: true });
-      if (!isOperacionalFormValid) return;
-
-      setIsSubmitting(true);
-      try {
-        const request: LoginRequest = {
-          cpf: cleanOpCpf,
-          email: opEmail.trim().toLowerCase(),
-          codigoEmpresa: opCompanyCode.trim().toUpperCase(),
-          senha: opPassword,
-        };
-
-        const roles = await loginFuncionario(request);
-        const canOpenDashboard = roles.some((role) =>
-          DASHBOARD_ALLOWED_ROLES.some((allowedRole) => allowedRole === role.toUpperCase())
-        );
-
-        if (canOpenDashboard) {
-          navigate('/dashboard', { replace: true });
-        } else {
-          setNotice('Login operacional concluído com sucesso!');
-        }
-      } catch (requestError) {
-        setError(normalizeApiError(requestError));
-      } finally {
-        setIsSubmitting(false);
-      }
+    } catch (requestError) {
+      setError(normalizeApiError(requestError));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
     <main id="main-content" className="login-container" aria-labelledby="login-title" tabIndex={-1}>
+      {/* Lado Esquerdo: Formulário em Card Degradê */}
       <section className="login-form-section">
-        <div className="login-content">
+        <div className="login-card">
           <h1 id="login-title" className="login-title">Entrar</h1>
 
-          {/* Alternador de Modo de Autenticação */}
-          <div className="auth-mode-selector" role="tablist" aria-label="Selecione o tipo de login">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'admin'}
-              className={`auth-mode-btn ${mode === 'admin' ? 'active' : ''}`}
-              onClick={() => {
-                setMode('admin');
-                setError(null);
-                setNotice('');
-              }}
-            >
-              Administrador
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'operacional'}
-              className={`auth-mode-btn ${mode === 'operacional' ? 'active' : ''}`}
-              onClick={() => {
-                setMode('operacional');
-                setError(null);
-                setNotice('');
-              }}
-            >
-              Usuário Operacional
-            </button>
-          </div>
-
-          <p className="form-legend">
-            <span className="field-required">*</span> Campos obrigatórios
-          </p>
-
           <form className="login-form" onSubmit={handleSubmit} noValidate>
-            {mode === 'admin' ? (
-              /* Formulário de Administrador (POST /api/v1/auth/adm/login) */
-              <>
-                <div className="login-input-group">
-                  <label htmlFor="login-admin-identificador" className="field-label">
-                    <span>CNPJ ou E-mail <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-admin-identificador"
-                    name="adminIdentifier"
-                    type="text"
-                    placeholder="CNPJ ou E-mail"
-                    autoComplete="username"
-                    required
-                    value={adminIdentifier}
-                    onBlur={() => setTouched((prev) => ({ ...prev, adminIdentifier: true }))}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setAdminIdentifier(val.includes('@') ? val : (val.replace(/\D/g, '').length > 0 && !/[a-zA-Z]/.test(val) ? formatCnpj(val) : val));
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${
-                      touched.adminIdentifier && !isAdminIdentifierValid ? 'has-error' : ''
-                    }`}
-                    aria-invalid={touched.adminIdentifier && !isAdminIdentifierValid}
-                  />
-                  {touched.adminIdentifier && !isAdminIdentifierValid && (
-                    <span className="login-field-error" role="alert">
-                      Informe um CNPJ válido (14 dígitos) ou e-mail corporativo.
-                    </span>
-                  )}
-                </div>
+            {/* Campo CNPJ */}
+            <div className="login-input-group">
+              <label htmlFor="login-cnpj" className="login-label">
+                CNPJ
+              </label>
+              <div className="login-input-wrapper">
+                <input
+                  id="login-cnpj"
+                  name="cnpj"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="00.000.000/0000-00"
+                  autoComplete="organization"
+                  required
+                  value={cnpj}
+                  onChange={handleCnpjChange}
+                  onBlur={() => setTouched((prev) => ({ ...prev, cnpj: true }))}
+                  className={`login-input ${touched.cnpj && !isCnpjValid ? 'has-error' : ''}`}
+                  aria-invalid={touched.cnpj && !isCnpjValid}
+                />
+              </div>
+              {touched.cnpj && !isCnpjValid && (
+                <span className="login-field-error" role="alert">
+                  Informe um CNPJ válido com 14 dígitos.
+                </span>
+              )}
+            </div>
 
-                <div className="login-input-group">
-                  <label htmlFor="login-admin-senha" className="field-label">
-                    <span>Senha <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-admin-senha"
-                    name="adminSenha"
-                    type="password"
-                    placeholder="Senha"
-                    autoComplete="current-password"
-                    required
-                    value={adminPassword}
-                    onBlur={() => setTouched((prev) => ({ ...prev, adminPassword: true }))}
-                    onChange={(e) => {
-                      setAdminPassword(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${
-                      touched.adminPassword && !isAdminPasswordValid ? 'has-error' : ''
-                    }`}
-                    aria-invalid={touched.adminPassword && !isAdminPasswordValid}
-                  />
-                  {touched.adminPassword && !isAdminPasswordValid && (
-                    <span className="login-field-error" role="alert">
-                      A senha deve conter no mínimo 6 caracteres.
-                    </span>
-                  )}
-                </div>
-              </>
-            ) : (
-              /* Formulário Operacional (POST /api/v1/auth/login) */
-              <>
-                <div className="login-input-group">
-                  <label htmlFor="login-op-cpf" className="field-label">
-                    <span>CPF <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-op-cpf"
-                    name="opCpf"
-                    type="text"
-                    placeholder="CPF"
-                    autoComplete="username"
-                    required
-                    value={opCpf}
-                    onBlur={() => setTouched((prev) => ({ ...prev, opCpf: true }))}
-                    onChange={(e) => {
-                      setOpCpf(formatCpf(e.target.value));
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${touched.opCpf && !isOpCpfValid ? 'has-error' : ''}`}
-                    aria-invalid={touched.opCpf && !isOpCpfValid}
-                  />
-                  {touched.opCpf && !isOpCpfValid && (
-                    <span className="login-field-error" role="alert">
-                      O CPF deve conter exatamente 11 dígitos.
-                    </span>
-                  )}
-                </div>
+            {/* Campo Senha */}
+            <div className="login-input-group">
+              <label htmlFor="login-senha" className="login-label">
+                Senha
+              </label>
+              <div className="login-input-wrapper">
+                <input
+                  id="login-senha"
+                  name="senha"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Senha"
+                  autoComplete="current-password"
+                  required
+                  value={senha}
+                  onChange={(e) => {
+                    setSenha(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onBlur={() => setTouched((prev) => ({ ...prev, senha: true }))}
+                  className={`login-input ${touched.senha && !isSenhaValid ? 'has-error' : ''}`}
+                  aria-invalid={touched.senha && !isSenhaValid}
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                  tabIndex={0}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              {touched.senha && !isSenhaValid && (
+                <span className="login-field-error" role="alert">
+                  A senha deve conter no mínimo 6 caracteres.
+                </span>
+              )}
+            </div>
 
-                <div className="login-input-group">
-                  <label htmlFor="login-op-email" className="field-label">
-                    <span>E-mail <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-op-email"
-                    name="opEmail"
-                    type="email"
-                    placeholder="E-mail"
-                    autoComplete="email"
-                    required
-                    value={opEmail}
-                    onBlur={() => setTouched((prev) => ({ ...prev, opEmail: true }))}
-                    onChange={(e) => {
-                      setOpEmail(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${touched.opEmail && !isOpEmailValid ? 'has-error' : ''}`}
-                    aria-invalid={touched.opEmail && !isOpEmailValid}
-                  />
-                  {touched.opEmail && !isOpEmailValid && (
-                    <span className="login-field-error" role="alert">
-                      Informe um e-mail válido.
-                    </span>
-                  )}
-                </div>
-
-                <div className="login-input-group">
-                  <label htmlFor="login-op-codigo" className="field-label">
-                    <span>Código da empresa <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-op-codigo"
-                    name="opCompanyCode"
-                    type="text"
-                    placeholder="Código da empresa"
-                    autoComplete="organization"
-                    required
-                    value={opCompanyCode}
-                    onBlur={() => setTouched((prev) => ({ ...prev, opCompanyCode: true }))}
-                    onChange={(e) => {
-                      setOpCompanyCode(e.target.value.toUpperCase());
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${
-                      touched.opCompanyCode && !isOpCompanyCodeValid ? 'has-error' : ''
-                    }`}
-                    aria-invalid={touched.opCompanyCode && !isOpCompanyCodeValid}
-                  />
-                  {touched.opCompanyCode && !isOpCompanyCodeValid && (
-                    <span className="login-field-error" role="alert">
-                      Informe o código da empresa.
-                    </span>
-                  )}
-                </div>
-
-                <div className="login-input-group">
-                  <label htmlFor="login-op-senha" className="field-label">
-                    <span>Senha <span className="field-required">*</span></span>
-                  </label>
-                  <input
-                    id="login-op-senha"
-                    name="opSenha"
-                    type="password"
-                    placeholder="Senha"
-                    autoComplete="current-password"
-                    required
-                    value={opPassword}
-                    onBlur={() => setTouched((prev) => ({ ...prev, opPassword: true }))}
-                    onChange={(e) => {
-                      setOpPassword(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    className={`login-input ${
-                      touched.opPassword && !isOpPasswordValid ? 'has-error' : ''
-                    }`}
-                    aria-invalid={touched.opPassword && !isOpPasswordValid}
-                  />
-                  {touched.opPassword && !isOpPasswordValid && (
-                    <span className="login-field-error" role="alert">
-                      A senha deve conter no mínimo 6 caracteres.
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-
+            {/* Link Esqueci minha senha */}
             <div className="login-forgot-box">
               <Link to="/esqueci-minha-senha" className="login-forgot-link">
                 Esqueci minha senha
               </Link>
             </div>
 
+            {/* Feedbacks de Erro e Aviso */}
             {error && (
               <div className="login-feedback login-feedback-error" role="alert">
                 <p>{error.message}</p>
@@ -376,6 +216,16 @@ export function Login() {
               </div>
             )}
 
+            {/* Botão de Ação: Entrar */}
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={isSubmitting || !isFormValid}
+            >
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
+            </button>
+
+            {/* Rodapé: Crie uma conta */}
             <div className="login-switch-box">
               <p className="login-switch-text">
                 Não possui uma conta?{' '}
@@ -384,32 +234,32 @@ export function Login() {
                 </Link>
               </p>
             </div>
-
-            <button
-              type="submit"
-              className="login-submit-btn"
-              disabled={isSubmitting || !isFormValid}
-              title={
-                !isFormValid
-                  ? mode === 'admin'
-                    ? 'Preencha o CNPJ ou e-mail corporativo e senha'
-                    : 'Preencha CPF, e-mail, código da empresa e senha'
-                  : undefined
-              }
-            >
-              {isSubmitting ? 'Entrando...' : 'Entrar'}
-            </button>
           </form>
         </div>
       </section>
 
+      {/* Lado Direito: Imagem e Branding */}
       <section className="login-hero-section" aria-label="Apresentação Efficientia">
-        <div className="login-hero-overlay" />
-        <img
-          src={caminhaoImg}
-          alt="Caminhão boiadeiro com a marca Efficientia - Gestão que move o campo"
-          className="login-hero-img"
-        />
+        <div className="login-hero-bg-wrapper">
+          <img
+            src={caminhaoImg}
+            alt=""
+            className="login-hero-img"
+            aria-hidden="true"
+          />
+          <div className="login-hero-overlay" aria-hidden="true" />
+        </div>
+        <div className="login-hero-content">
+          <div className="login-hero-logo">
+            <img src={efficientiaMark} alt="" className="login-hero-mark" aria-hidden="true" />
+            <img src={efficientiaWordmark} alt="Efficientia" className="login-hero-wordmark" />
+          </div>
+          <h2 className="login-hero-tagline">
+            <span>GESTÃO</span>
+            <span>QUE MOVE</span>
+            <span>O CAMPO</span>
+          </h2>
+        </div>
       </section>
     </main>
   );

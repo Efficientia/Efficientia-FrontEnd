@@ -37,9 +37,7 @@ export function EsqueciSenha() {
     if (!isValid) return;
     setIsSubmitting(true);
     try {
-      const { promise, resolve } = Promise.withResolvers<void>();
-      setTimeout(resolve, 800);
-      await promise;
+      await new Promise<void>((resolve) => setTimeout(resolve, 800));
       setSuccessNotice(
         'Instruções enviadas com sucesso! Verifique a caixa de entrada e a pasta de spam do seu e-mail para redefinir sua senha.'
       );

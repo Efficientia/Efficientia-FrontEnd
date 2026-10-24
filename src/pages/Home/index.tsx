@@ -1,6 +1,7 @@
-import './Home.css';
+import { useNavigate } from 'react-router-dom';
 
 export function Home() {
+  const navigate = useNavigate();
   return (
     <div className="home-container">
       <header className="home-header">
@@ -8,8 +9,8 @@ export function Home() {
         <nav className="home-nav" aria-label="Navegação principal">
           <a href="#sobre">Sobre o Projeto</a>
           <a href="#contato">Contato</a>
-          {/* O link de login será atualizado na task de roteamento */}
-          <a href="/login">Acessar Sistema</a>
+          <button type="button" className="home-login-link" onClick={() => navigate('/login')}>Entrar</button>
+          <button type="button" className="home-signup-link" onClick={() => navigate('/cadastro')}>Criar conta</button>
         </nav>
       </header>
 
@@ -21,7 +22,7 @@ export function Home() {
             O Efficientia digitaliza o diário de viagem (Portaria SDA/MAPA nº 1.280), 
             trazendo segurança para o motorista da JBS/Friboi e sustentabilidade para o processo.
           </p>
-          <button className="cta-button" aria-label="Começar a usar o sistema">
+          <button type="button" className="cta-button" aria-label="Entrar no sistema" onClick={() => navigate('/login')}>
             Acessar Dashboard
           </button>
         </section>

@@ -1,0 +1,764 @@
+/* ==========================================================================
+   INTERACTIVE BAR CHART — EFFICIENTIA DESIGN SYSTEM
+   Interatividade, Rótulos, Download CSV/PNG e Responsividade Total
+   ========================================================================== */
+
+.eff-chart-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f4;
+  box-shadow: 0 4px 16px rgba(15, 35, 75, 0.04);
+  position: relative;
+  min-height: 290px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.eff-chart-card:hover {
+  border-color: #cbd7ea;
+  box-shadow: 0 6px 20px rgba(15, 35, 75, 0.07);
+}
+
+/* Cabeçalho */
+.eff-chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.eff-chart-heading-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.eff-chart-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.eff-chart-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e232d;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.eff-chart-large .eff-chart-title {
+  font-size: 1.12rem;
+}
+
+.eff-chart-unit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background-color: #e9f1fe;
+  color: #0f51ae;
+  text-transform: lowercase;
+}
+
+.eff-chart-subtitle {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #8c98a9;
+  font-weight: 500;
+}
+
+/* Toolbar de Ações: Período, Modo de exibição e Downloads */
+.eff-chart-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eff-period-dropdown-wrap {
+  position: relative;
+}
+
+.eff-period-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 22px 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  transition: all 0.2s ease;
+}
+
+.eff-period-select:hover,
+.eff-period-select:focus-visible {
+  border-color: #0f51ae;
+  background-color: #ffffff;
+  outline: none;
+}
+
+.eff-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1;
+}
+
+.eff-tool-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f51ae;
+  transform: translateY(-1px);
+}
+
+.eff-tool-btn.active {
+  background-color: #0f51ae;
+  border-color: #0f51ae;
+  color: #ffffff;
+}
+
+.eff-btn-export-csv:hover {
+  border-color: #059669;
+  color: #059669;
+}
+
+.eff-btn-export-png:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+/* Toast de Feedback */
+.eff-chart-toast {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background-color: #09264d;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  animation: effFadeSlide 0.25s ease-out;
+}
+
+@keyframes effFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Área do Gráfico */
+.eff-chart-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 160px;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 6px;
+}
+
+/* Eixo Y */
+.eff-chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 24px;
+  padding-top: 18px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: right;
+  min-width: 32px;
+  user-select: none;
+}
+
+/* Grid de Barras */
+.eff-bars-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  align-items: end;
+  position: relative;
+}
+
+/* Coluna de cada dia */
+.eff-bar-column {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.eff-bar-column.dimmed {
+  opacity: 0.42;
+}
+
+.eff-bar-column:focus-visible {
+  outline: 2px solid #0f51ae;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.eff-bar-column:hover,
+.eff-bar-column.active {
+  transform: translateY(-2px);
+}
+
+/* RÓTULO DE VALOR PERMANENTE (Acima da Barra) */
+.eff-bar-value-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  min-height: 16px;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.eff-bar-value-label.highlight,
+.eff-bar-column.active .eff-bar-value-label {
+  color: #0f51ae;
+  transform: scale(1.08);
+}
+
+/* Trilho da Barra */
+.eff-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 32px;
+  background-color: #f1f5f9;
+  border-radius: 8px 8px 3px 3px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+.eff-chart-large .eff-bar-track {
+  max-width: 36px;
+}
+
+.eff-bar-column:hover .eff-bar-track,
+.eff-bar-column.active .eff-bar-track {
+  background-color: #e2e8f0;
+}
+
+/* Preenchimento Colorido da Barra */
+.eff-bar-fill {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+}
+
+/* Cores das barras */
+.eff-bar-fill-blue {
+  background: linear-gradient(180deg, #2b77db 0%, #0f51ae 100%);
+}
+
+.eff-bar-fill-highlight {
+  background: linear-gradient(180deg, #6ee780 0%, #56d867 100%);
+  box-shadow: 0 0 10px rgba(86, 216, 103, 0.4);
+}
+
+.eff-bar-fill-red {
+  background: linear-gradient(180deg, #f87171 0%, #f41f2e 100%);
+}
+
+.eff-bar-fill-orange {
+  background: linear-gradient(180deg, #fbbf24 0%, #ff9e0e 100%);
+}
+
+.eff-bar-fill-green {
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+}
+
+.eff-bar-pinned {
+  outline: 2px solid #56d867;
+  outline-offset: -1px;
+}
+
+/* RÓTULO DO DIA (Base) */
+.eff-bar-day-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #8c98a9;
+  text-align: center;
+  user-select: none;
+  margin-top: 2px;
+  transition: color 0.15s ease;
+}
+
+.eff-bar-day-label.highlight,
+.eff-bar-column.active .eff-bar-day-label {
+  color: #0f51ae;
+  font-weight: 800;
+}
+
+/* Tooltip Flutuante Interativo */
+.eff-chart-tooltip {
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  background-color: #09264d;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(9, 38, 77, 0.25);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+  pointer-events: none;
+  animation: effTooltipPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.eff-chart-tooltip.pinned {
+  pointer-events: auto;
+  border-color: #56d867;
+  box-shadow: 0 10px 28px rgba(86, 216, 103, 0.25);
+}
+
+@keyframes effTooltipPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.eff-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eff-tooltip-day {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.eff-tooltip-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: #56d867;
+  color: #09264d;
+  text-transform: uppercase;
+}
+
+.eff-tooltip-pinned-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.eff-tooltip-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.eff-tooltip-number {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.eff-tooltip-unit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.eff-tooltip-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.eff-tooltip-hint {
+  font-size: 0.62rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Modo Tabela */
+.eff-table-view-wrap {
+  flex: 1;
+  overflow-x: auto;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.eff-chart-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.eff-chart-data-table th,
+.eff-chart-data-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.eff-chart-data-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-align: left;
+}
+
+.eff-chart-data-table tfoot th,
+.eff-chart-data-table tfoot td {
+  background-color: #f1f5f9;
+  border-top: 1.5px solid #cbd5e1;
+}
+
+.eff-tr-highlight {
+  background-color: rgba(86, 216, 103, 0.08);
+}
+
+.eff-tr-selected {
+  background-color: rgba(15, 81, 174, 0.08);
+}
+
+.eff-td-full-day {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.eff-table-badge-pico {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #e8f8ec;
+  color: #166534;
+  font-weight: 700;
+  font-size: 0.65rem;
+}
+
+.eff-table-badge-regular {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.65rem;
+}
+
+/* Rodapé Resumido */
+.eff-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.72rem;
+  flex-wrap: wrap;
+}
+
+.eff-footer-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.eff-stat-label {
+  color: #8c98a9;
+  font-weight: 500;
+}
+
+.eff-stat-val {
+  color: #1e232d;
+  font-weight: 700;
+}
+
+.eff-stat-pico .eff-stat-val {
+  color: #0f51ae;
+}
+
+/* ==========================================================================
+   MODO ESCURO (DARK MODE)
+   ========================================================================== */
+.eff-chart-dark {
+  background-color: #0e2545;
+  border-color: #294f7a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.eff-chart-dark:hover {
+  border-color: #3b6aa3;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+
+.eff-chart-dark .eff-chart-title {
+  color: #f2f7ff;
+}
+
+.eff-chart-dark .eff-chart-unit-badge {
+  background-color: rgba(46, 122, 230, 0.22);
+  color: #85b8ff;
+}
+
+.eff-chart-dark .eff-chart-subtitle {
+  color: #abbfdb;
+}
+
+.eff-chart-dark .eff-period-select {
+  background-color: #0b1e38;
+  border-color: #294f7a;
+  color: #f2f7ff;
+}
+
+.eff-chart-dark .eff-tool-btn {
+  background-color: #0b1e38;
+  border-color: #294f7a;
+  color: #abbfdb;
+}
+
+.eff-chart-dark .eff-tool-btn:hover {
+  background-color: #113778;
+  border-color: #2e7ae6;
+  color: #f2f7ff;
+}
+
+.eff-chart-dark .eff-tool-btn.active {
+  background-color: #2e7ae6;
+  border-color: #2e7ae6;
+  color: #ffffff;
+}
+
+.eff-chart-dark .eff-bar-value-label {
+  color: #abbfdb;
+}
+
+.eff-chart-dark .eff-bar-value-label.highlight,
+.eff-chart-dark .eff-bar-column.active .eff-bar-value-label {
+  color: #56d867;
+}
+
+.eff-chart-dark .eff-bar-track {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.eff-chart-dark .eff-bar-column:hover .eff-bar-track,
+.eff-chart-dark .eff-bar-column.active .eff-bar-track {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.eff-chart-dark .eff-bar-day-label {
+  color: #abbfdb;
+}
+
+.eff-chart-dark .eff-bar-day-label.highlight,
+.eff-chart-dark .eff-bar-column.active .eff-bar-day-label {
+  color: #56d867;
+}
+
+.eff-chart-dark .eff-chart-footer {
+  border-top-color: #294f7a;
+}
+
+.eff-chart-dark .eff-stat-label {
+  color: #abbfdb;
+}
+
+.eff-chart-dark .eff-stat-val {
+  color: #f2f7ff;
+}
+
+.eff-chart-dark .eff-stat-pico .eff-stat-val {
+  color: #56d867;
+}
+
+.eff-chart-dark .eff-table-view-wrap {
+  border-color: #294f7a;
+}
+
+.eff-chart-dark .eff-chart-data-table th {
+  background-color: #0b1e38;
+  color: #f2f7ff;
+  border-bottom-color: #294f7a;
+}
+
+.eff-chart-dark .eff-chart-data-table td {
+  border-bottom-color: #1a365d;
+  color: #f2f7ff;
+}
+
+.eff-chart-dark .eff-chart-data-table tfoot th,
+.eff-chart-dark .eff-chart-data-table tfoot td {
+  background-color: #0b1e38;
+  border-top-color: #294f7a;
+}
+
+.eff-chart-dark .eff-tr-highlight {
+  background-color: rgba(86, 216, 103, 0.12);
+}
+
+.eff-chart-dark .eff-tr-selected {
+  background-color: rgba(46, 122, 230, 0.18);
+}
+
+.eff-chart-dark .eff-table-badge-pico {
+  background-color: rgba(86, 216, 103, 0.2);
+  color: #56d867;
+}
+
+.eff-chart-dark .eff-table-badge-regular {
+  background-color: #113778;
+  color: #abbfdb;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (MOBILE & TABLET)
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .eff-chart-card {
+    min-height: 270px;
+    padding: 14px 16px;
+  }
+
+  .eff-chart-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: 4px;
+  }
+
+  .eff-chart-body {
+    min-height: 180px;
+  }
+
+  .eff-bars-grid {
+    gap: 6px;
+  }
+
+  .eff-bar-track {
+    max-width: 28px;
+  }
+
+  .eff-chart-large .eff-bar-track {
+    max-width: 30px;
+  }
+
+  .eff-bar-value-label {
+    font-size: 0.68rem;
+  }
+
+  .eff-bar-day-label {
+    font-size: 0.7rem;
+  }
+
+  .eff-chart-tooltip {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(100% + 8px);
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .eff-chart-card {
+    padding: 12px 12px;
+  }
+
+  .eff-chart-title {
+    font-size: 0.94rem;
+  }
+
+  .eff-tool-btn {
+    padding: 4px 7px;
+    font-size: 0.68rem;
+  }
+
+  .eff-tool-btn-text {
+    display: inline;
+  }
+
+  .eff-bars-grid {
+    gap: 4px;
+  }
+
+  .eff-bar-track {
+    max-width: 22px;
+  }
+
+  .eff-bar-value-label {
+    font-size: 0.62rem;
+  }
+
+  .eff-bar-day-label {
+    font-size: 0.65rem;
+  }
+
+  .eff-chart-footer {
+    font-size: 0.68rem;
+    gap: 6px;
+  }
+}

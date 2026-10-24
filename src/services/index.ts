@@ -6,3 +6,4 @@ export * from './cadastroBaseService';
 export * from './documentoService';
 export * from './relatorioService';
 export * from './caminhaoService';
+export * from './tempService';
