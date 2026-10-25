@@ -7,3 +7,4 @@ export * from './relatorio';
 export * from './frota';
 export * from './api';
 export * from './ai';
+export * from './temp';

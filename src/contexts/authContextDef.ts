@@ -18,9 +18,9 @@ export interface AuthContextData {
   loginFuncionario: (dados: LoginRequest) => Promise<string[]>;
   loginAdmin: (dados: LoginAdminRequest) => Promise<string[]>;
   cadastrarPrimeiroAdmin: (dados: CriarPrimeiroAdminRequest) => Promise<void>;
+  atualizarEmpresaLocal: (dados: Partial<EmpresaResponse>) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
 }
-
 
 export const AuthContext = createContext<AuthContextData | undefined>(undefined);

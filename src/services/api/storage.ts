@@ -3,6 +3,10 @@ import type { EmpresaResponse } from '../../types/empresa';
 
 const AUTH_TOKEN_KEY = '@efficientia:v1:token';
 const AUTH_PROFILE_KEY = '@efficientia:v1:profile';
+const PLACEHOLDER_TOKENS: Record<string, true> = {
+  'offline-session-token': true,
+  'test-token': true,
+};
 const LEGACY_AUTH_KEYS = ['@efficientia:token', '@efficientia:user', '@efficientia:empresa', '@efficientia:roles', 'token'];
 
 let legacyAuthKeysRemoved = false;
@@ -57,14 +61,19 @@ function isStoredAuthProfile(value: unknown): value is StoredAuthProfile {
 
 export function getStoredToken(): string | null {
   clearLegacyAuthKeys();
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token && PLACEHOLDER_TOKENS[token]) {
+    clearStoredAuthSession();
+    return null;
+  }
+  return token;
 }
 
 export function getStoredAuthSession(): StoredAuthSession | null {
   clearLegacyAuthKeys();
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
   const rawProfile = localStorage.getItem(AUTH_PROFILE_KEY);
-  if (!token || !rawProfile) {
+  if (!token || (token && PLACEHOLDER_TOKENS[token]) || !rawProfile) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_PROFILE_KEY);
     return null;

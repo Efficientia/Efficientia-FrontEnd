@@ -14,7 +14,8 @@ export function getBaseUrl(): string {
  */
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 30000, // 30s de tolerância para cold starts do Render
+  // O Render pode levar alguns segundos para acordar o serviço após inatividade.
+  timeout: 30000,
   headers: {
     Accept: 'application/json',
   },

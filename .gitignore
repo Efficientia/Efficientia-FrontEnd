@@ -26,3 +26,12 @@ dist-ssr
 *.env.local
 *.env
 jira.env
+
+
+
+.omp-agents
+references_front/
+*.png
+!src/**/*.png
+API-Map.md
+API-spec.md

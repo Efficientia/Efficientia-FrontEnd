@@ -87,7 +87,8 @@ export interface EmpresaResponse {
 }
 
 export interface LoginEmpresaRequest {
-  cnpj: string;
+  cnpj?: string | null;
+  identificador?: string | null;
   senha?: string | null;
 }
 

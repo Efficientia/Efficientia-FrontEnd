@@ -1,0 +1,51 @@
+.locations-page{background:#f4f7fb}.locations-main{padding:32px 38px 48px;overflow:auto}.locations-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px}.locations-heading h2{margin:4px 0 6px;color:#09264d;font-size:clamp(1.55rem,2.4vw,2rem);letter-spacing:-.03em}.locations-heading p:not(.dashboard-eyebrow){margin:0;color:#526886;font-size:.92rem}.locations-refresh{height:42px;padding:0 18px;border:1px solid #d5e0ee;border-radius:9px;background:#fff;color:#0f51ae;font-weight:700;cursor:pointer}.locations-refresh:disabled{opacity:.6;cursor:wait}.locations-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid #dce5f1}.locations-tabs button{padding:11px 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:#526886;font-weight:700;cursor:pointer}.locations-tabs button.active{border-bottom-color:#0f51ae;color:#0f51ae}.locations-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.location-card{display:flex;gap:14px;min-height:150px;padding:20px;border:1px solid #dee7f3;border-radius:14px;background:#fdfeff;box-shadow:0 4px 14px rgba(9,38,77,.06)}.location-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#eaf2ff;color:#0f51ae}.location-icon svg{width:21px;height:21px}.location-card-content{min-width:0;flex:1}.location-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.location-type{color:#168a46;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}.location-status{padding:4px 8px;border-radius:999px;background:#e4f8e9;color:#168a46;font-size:.68rem;font-weight:800}.location-status.inactive{background:#ffe8e8;color:#bd3131}.location-card h3{margin:16px 0 6px;color:#09264d;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.location-card p{margin:0;color:#526886;font-size:.82rem}.location-card small{display:block;margin-top:16px;color:#7889a3;font-size:.7rem}@media(max-width:900px){.locations-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.locations-main{padding:24px 18px}.locations-heading{flex-direction:column}.locations-refresh{width:100%}.locations-tabs{overflow:auto}.locations-tabs button{white-space:nowrap}.locations-grid{grid-template-columns:1fr}}
+/* Dark Mode para Fazendas e Unidades */
+html[data-theme='dark'] .locations-page {
+  background: var(--eff-dark-bg);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .locations-heading h2 {
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .locations-heading p:not(.dashboard-eyebrow) {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .locations-refresh {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-blue);
+}
+
+html[data-theme='dark'] .locations-tabs {
+  border-bottom-color: var(--eff-dark-border);
+}
+
+html[data-theme='dark'] .locations-tabs button {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .locations-tabs button.active {
+  color: var(--eff-dark-blue);
+  border-bottom-color: var(--eff-dark-blue);
+}
+
+html[data-theme='dark'] .location-card {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .location-card h3 {
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .location-card p {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .location-card span {
+  color: var(--eff-dark-text-secondary);
+}
