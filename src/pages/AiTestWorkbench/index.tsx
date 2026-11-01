@@ -196,6 +196,9 @@ export function AiTestWorkbench(): ReactElement {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (isLoading) {
+      return;
+    }
     void handleSendMessage(inputText);
   };
 
@@ -337,7 +340,11 @@ export function AiTestWorkbench(): ReactElement {
                   type="button"
                   className="ai-workbench__chip-btn"
                   disabled={isLoading}
-                  onClick={() => void handleSendMessage(suggestion)}
+                  onClick={() => {
+                    if (!isLoading) {
+                      void handleSendMessage(suggestion);
+                    }
+                  }}
                 >
                   {suggestion}
                 </button>
@@ -353,12 +360,31 @@ export function AiTestWorkbench(): ReactElement {
             <textarea
               id="workbench-ai-prompt"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Digite sua dúvida sobre rotas, procedimentos ou regras de carga..."
+              onChange={(e) => {
+                if (!isLoading) {
+                  setInputText(e.target.value);
+                }
+              }}
+              placeholder={
+                isLoading
+                  ? 'Aguarde, a Cinttia está processando uma mensagem...'
+                  : 'Digite sua dúvida sobre rotas, procedimentos ou regras de carga...'
+              }
               className="ai-workbench__textarea"
               rows={3}
               disabled={isLoading}
+              readOnly={isLoading}
+              aria-disabled={isLoading}
+              onPaste={(e) => {
+                if (isLoading) {
+                  e.preventDefault();
+                }
+              }}
               onKeyDown={(e) => {
+                if (isLoading) {
+                  e.preventDefault();
+                  return;
+                }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   void handleSendMessage(inputText);
