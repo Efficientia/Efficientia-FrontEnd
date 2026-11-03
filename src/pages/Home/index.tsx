@@ -107,7 +107,14 @@ export function Home() {
           SEÇÃO 1: HERO
           ============================================================== */}
       <section id="inicio" className="hero">
-        <video autoPlay loop muted playsInline className="video-fundo">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="/assets/background-hero-poster.jpg"
+          className="video-fundo"
+        >
           <source src="/assets/background-hero.webm" type="video/webm" />
         </video>
 
@@ -411,21 +418,21 @@ export function Home() {
 
             <ul className="funcionalidades-lista">
               <li>
-                <img src="/assets/funcionalidades-offline.svg" alt="" width="64" height="64" loading="lazy" />
+                <img src="/assets/funcionalidades-offline.svg" alt="" width="64" height="64" />
                 <div>
                   <h3>Funcionamento offline</h3>
                   <p>Preencha os dados mesmo sem conexão.</p>
                 </div>
               </li>
               <li>
-                <img src="/assets/funcionalidades-boletim.svg" alt="" width="64" height="64" loading="lazy" />
+                <img src="/assets/funcionalidades-boletim.svg" alt="" width="64" height="64" />
                 <div>
                   <h3>Boletim digital</h3>
                   <p>Fluxo guiado para embarque e desembarque.</p>
                 </div>
               </li>
               <li>
-                <img src="/assets/funcionalidades-assinatura.svg" alt="" width="64" height="64" loading="lazy" />
+                <img src="/assets/funcionalidades-assinatura.svg" alt="" width="64" height="64" />
                 <div>
                   <h3>Assinatura digital</h3>
                   <p>Finalize registros com mais agilidade.</p>
@@ -435,13 +442,13 @@ export function Home() {
           </div>
 
           <div className="funcionalidades-mockups">
-            <img className="funcionalidades-fundo" src="/assets/funcionalidades-fundo.svg" alt="" width="916" height="790" loading="lazy" />
-            <img className="funcionalidades-guia funcionalidades-guia-dashboard" src="/assets/funcionalidades-guia-dashboard.svg" alt="" width="1" height="80" loading="lazy" />
-            <img className="funcionalidades-guia funcionalidades-guia-chat" src="/assets/funcionalidades-guia-chat.svg" alt="" width="57" height="73" loading="lazy" />
-            <img className="funcionalidades-ponto funcionalidades-ponto-dashboard-inicio" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" loading="lazy" />
-            <img className="funcionalidades-ponto funcionalidades-ponto-dashboard-fim" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" loading="lazy" />
-            <img className="funcionalidades-ponto funcionalidades-ponto-chat-inicio" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" loading="lazy" />
-            <img className="funcionalidades-ponto funcionalidades-ponto-chat-fim" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" loading="lazy" />
+            <img className="funcionalidades-fundo" src="/assets/funcionalidades-fundo.svg" alt="" width="916" height="790" />
+            <img className="funcionalidades-guia funcionalidades-guia-dashboard" src="/assets/funcionalidades-guia-dashboard.svg" alt="" width="1" height="80" />
+            <img className="funcionalidades-guia funcionalidades-guia-chat" src="/assets/funcionalidades-guia-chat.svg" alt="" width="57" height="73" />
+            <img className="funcionalidades-ponto funcionalidades-ponto-dashboard-inicio" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" />
+            <img className="funcionalidades-ponto funcionalidades-ponto-dashboard-fim" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" />
+            <img className="funcionalidades-ponto funcionalidades-ponto-chat-inicio" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" />
+            <img className="funcionalidades-ponto funcionalidades-ponto-chat-fim" src="/assets/funcionalidades-ponto.svg" alt="" width="6" height="6" />
 
             <figure className="funcionalidades-dashboard">
               <img
@@ -450,11 +457,9 @@ export function Home() {
                 alt="Dashboard atual do Efficientia com indicadores, gráficos, fila de análise, alertas e rotas em andamento."
                 width="854"
                 height="586"
-                loading="lazy"
-                decoding="async"
               />
               <figcaption>
-                <img src="/assets/funcionalidades-grafico.svg" alt="" width="64" height="64" loading="lazy" />
+                <img src="/assets/funcionalidades-grafico.svg" alt="" width="64" height="64" />
                 <div>
                   <h3>Dashboards operacionais</h3>
                   <p>Visão completa da operação em tempo real.</p>
@@ -469,11 +474,9 @@ export function Home() {
                 alt="Assistente Virtual na versão atual do app, com orientações sobre a rota, GTA e uso do aplicativo."
                 width="907"
                 height="1735"
-                loading="lazy"
-                decoding="async"
               />
               <figcaption>
-                <img src="/assets/funcionalidades-chat.svg" alt="" width="80" height="80" loading="lazy" />
+                <img src="/assets/funcionalidades-chat.svg" alt="" width="80" height="80" />
                 <div>
                   <h3>Chatbot de apoio</h3>
                   <p>Tire dúvidas e receba orientações na hora.</p>
@@ -525,8 +528,6 @@ export function Home() {
               alt="Tela atual do app Motorista V2 do Efficientia, com rotas e relatórios recentes."
               width="906"
               height="1736"
-              loading="lazy"
-              decoding="async"
             />
             <img
               id="dashboard-proximo-passo"
@@ -534,8 +535,6 @@ export function Home() {
               alt="Dashboard atual do Efficientia, com diários, bovinos, mortalidade e anomalias."
               width="854"
               height="586"
-              loading="lazy"
-              decoding="async"
             />
           </div>
         </div>
