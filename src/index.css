@@ -1,111 +1,572 @@
+/* ==========================================================================
+   EFFICIENTIA DESIGN SYSTEM — LINGUAGEM COMPARTILHADA PELAS REFERÊNCIAS SVG
+   "references_front/Prototipo visão web.svg" & "references_front/Protótipo Web - Dark Mode.svg"
+   ========================================================================== */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Cores Principais / Brand Tokens */
+  --eff-blue-primary: #0F51AE;
+  --eff-blue-hover: #0C418C;
+  --eff-green-action: #56D867;
+  --eff-green-hover: #47CE63;
+  --eff-navy-dark: #09264D;
+  --eff-logo-blue: #0F51AE;
+  --eff-logo-green: #56D867;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Superfícies, Fundos e Bordas (Light Mode) */
+  --eff-bg-app: #D8DEEB;
+  --eff-bg-card: #FDFEFF;
+  --eff-bg-input: #F8FAFD;
+  --eff-border-light: #D8E0F0;
+  --eff-border-card: #DEE7F3;
+  --eff-border-divider: #F1F3F9;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Tipografia e Textos (Light Mode) */
+  --eff-text-primary: #1F242E;
+  --eff-text-secondary: #526886;
+  --eff-text-muted: #7889A3;
+  --eff-text-placeholder: #8C98A9;
+  --eff-font-title: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --eff-font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --eff-font-family: var(--eff-font-body);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Modo Escuro (Dark Mode Tokens - Protótipo Web - Dark Mode.svg) */
+  --eff-dark-bg: #071329;
+  --eff-dark-surface: #0E2545;
+  --eff-dark-surface-raised: #113778;
+  --eff-dark-border: #294F7A;
+  --eff-dark-text: #F2F7FF;
+  --eff-dark-text-secondary: #ABBFDB;
+  --eff-dark-blue: #2E7AE6;
+  --eff-dark-green: #56D867;
+  --eff-dark-focus: #85B8FF;
+
+  /* Raios de Borda e Sombras */
+  --eff-radius-sm: 6px;
+  --eff-radius-md: 10px;
+  --eff-radius-lg: 16px;
+  --eff-radius-pill: 9999px;
+  --eff-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --eff-shadow-card: 0 4px 18px rgba(9, 38, 77, 0.06);
+  --eff-shadow-popover: 0 10px 30px rgba(7, 19, 41, 0.16);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* ==========================================================================
+   RESET & TIPOGRAFIA GLOBAL
+   ========================================================================== */
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+
+
+html {
+  font-size: 13px; /* Escala compacta proporcional ao zoom 75% */
+}
+
+html,
 body {
   margin: 0;
+  padding: 0;
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  font-family: var(--eff-font-family);
+  background: var(--eff-bg-app);
+  color: var(--eff-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+#root {
+  min-height: 100%;
+  width: 100%;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+button,
+input,
+select,
+textarea {
+  font-family: var(--eff-font-family);
+  font: inherit;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+h1, h2, h3, h4, h5, h6,
+.vg-page-heading h1,
+.vg-brand-title,
+.vg-kpi-val,
+.vg-audit-kpi-number,
+.vg-bottom-title,
+.dashboard-eyebrow,
+.drivers-heading h2,
+.fleet-heading h2,
+.locations-heading h2,
+.configuration-card h2,
+.onb-title,
+.onb-card-title {
+  font-family: var(--eff-font-title);
+  letter-spacing: -0.015em;
 }
 
-code {
+/* ==========================================================================
+   SCROLLBAR DISCRETA
+   ========================================================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 81, 174, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(15, 81, 174, 0.25);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(15, 81, 174, 0.45);
+}
+
+/* ==========================================================================
+   ESTRUTURA BASE DE PÁGINAS E CONTAINERS
+   ========================================================================== */
+
+.home-container,
+.login-shell,
+.cadastro-shell,
+.esqueci-shell,
+.onb-shell,
+.vg-shell,
+.fleet-page,
+.drivers-page,
+.locations-page,
+.configuration-shell {
+  min-height: 100vh;
+}
+
+/* Cards internos (NUNCA os containers 100vw da raiz) */
+.onb-form-card,
+.onb-review-card,
+.configuration-card,
+.fleet-card,
+.driver-card,
+.location-card,
+.vg-card {
+  border-radius: var(--eff-radius-lg);
+  box-shadow: var(--eff-shadow-card);
+}
+
+/* ==========================================================================
+   MODO ESCURO GLOBAL (DARK MODE)
+   ========================================================================== */
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] #root,
+html[data-theme='dark'] .home-container,
+html[data-theme='dark'] .vg-shell,
+html[data-theme='dark'] .fleet-page,
+html[data-theme='dark'] .drivers-page,
+html[data-theme='dark'] .locations-page,
+html[data-theme='dark'] .configuration-shell,
+html[data-theme='dark'] .onb-shell,
+html[data-theme='dark'] .ai-workbench {
+  background: var(--eff-dark-bg);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] * {
+  scrollbar-color: rgba(41, 79, 122, 0.45) transparent;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb {
+  background-color: rgba(41, 79, 122, 0.45);
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(41, 79, 122, 0.7);
+}
+
+/* Componentes e superfícies escuras */
+html[data-theme='dark'] .vg-topbar,
+html[data-theme='dark'] .vg-sidebar {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+}
+
+html[data-theme='dark'] .vg-topbar-divider,
+html[data-theme='dark'] .vg-sidebar-divider {
+  background: var(--eff-dark-border);
+}
+
+html[data-theme='dark'] .vg-page-heading h1,
+html[data-theme='dark'] .vg-card-title,
+html[data-theme='dark'] .vg-chart-title-lg,
+html[data-theme='dark'] .vg-chart-title-sm,
+html[data-theme='dark'] .vg-bottom-title,
+html[data-theme='dark'] .fleet-heading h2,
+html[data-theme='dark'] .drivers-heading h2,
+html[data-theme='dark'] .locations-heading h2,
+html[data-theme='dark'] .configuration-card h2,
+html[data-theme='dark'] .onb-title,
+html[data-theme='dark'] .onb-card-title {
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .vg-page-subtitle,
+html[data-theme='dark'] .configuration-card-description,
+html[data-theme='dark'] .onb-description,
+html[data-theme='dark'] .onb-card-hint {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .vg-search-box,
+html[data-theme='dark'] .vg-bell-btn,
+html[data-theme='dark'] .vg-card,
+html[data-theme='dark'] .configuration-card,
+html[data-theme='dark'] .onb-form-card,
+html[data-theme='dark'] .onb-review-card,
+html[data-theme='dark'] .location-card,
+html[data-theme='dark'] .fleet-card,
+html[data-theme='dark'] .driver-card,
+html[data-theme='dark'] .drivers-table-wrap,
+html[data-theme='dark'] .vg-reports-view,
+html[data-theme='dark'] .vg-queue-item,
+html[data-theme='dark'] .vg-alert-item,
+html[data-theme='dark'] .vg-route-item {
+  background: var(--eff-dark-surface);
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-text);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background-color: #0b1c36;
+  border-color: var(--eff-dark-border);
+  color: var(--eff-dark-text);
+}
+
+html[data-theme='dark'] .vg-nav-item {
+  color: var(--eff-dark-text-secondary);
+}
+
+html[data-theme='dark'] .vg-nav-item:hover:not(.active) {
+  background: var(--eff-dark-surface-raised);
+}
+
+html[data-theme='dark'] .vg-nav-item.active {
+  background: var(--eff-dark-blue);
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .vg-cta-btn,
+html[data-theme='dark'] .configuration-save-top,
+html[data-theme='dark'] .fleet-refresh,
+html[data-theme='dark'] .drivers-refresh,
+html[data-theme='dark'] .locations-refresh {
+  background: var(--eff-dark-green);
+  color: #071329;
+}
+
+html[data-theme='dark'] .ai-support-dialog,
+html[data-theme='dark'] .ai-support-feed,
+html[data-theme='dark'] .ai-workbench__session,
+html[data-theme='dark'] .ai-workbench__conversation,
+html[data-theme='dark'] .api-workbench__card {
+  background: var(--eff-dark-surface);
+  color: var(--eff-dark-text);
+  border-color: var(--eff-dark-border);
+}
+
+
+/* ==========================================================================
+   BRAND LOGO DINÂMICO (Tema Claro / Escuro)
+   ========================================================================== */
+html[data-theme='dark'],
+[data-theme='dark'],
+.dark,
+.bg-dark {
+  --eff-logo-blue: #FFF8E1;
+}
+
+.vg-brand-title,
+.layout-brand-title {
+  color: var(--eff-logo-blue, #0F51AE) !important;
+}
+
+.vg-brand-highlight,
+.layout-brand-highlight {
+  color: #56D867 !important;
+}
+
+.vg-brand-Check,
+.layout-brand-slogan {
+  color: #56D867 !important;
+}
+
+.vg-brand-green,
+.layout-brand-green {
+  color: #56D867 !important;
+}
+
+html[data-theme='dark'] .vg-brand-title,
+html[data-theme='dark'] .layout-brand-title,
+[data-theme='dark'] .vg-brand-title,
+[data-theme='dark'] .layout-brand-title,
+.dark .vg-brand-title,
+.dark .layout-brand-title {
+  color: #FFF8E1 !important;
+}
+
+
+/* ==========================================================================
+   HEADER FIXO NO TOPO (TOPBAR SEMPRE VISÍVEL)
+   ========================================================================== */
+.layout-topbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 62px !important;
+  z-index: 1000 !important;
+  box-shadow: 0 2px 10px rgba(9, 38, 77, 0.06) !important;
+}
+
+.vg-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1000 !important;
+  box-shadow: 0 2px 10px rgba(9, 38, 77, 0.06) !important;
+}
+
+.layout-shell,
+.onb-shell,
+.vg-shell {
+  overflow-x: clip !important;
+}
+
+/* Prevenir contorno preto indesejado ao focar áreas principais */
+main:focus,
+main:focus-visible,
+#main-content:focus,
+#main-content:focus-visible,
+.layout-main-content:focus,
+.layout-main-content:focus-visible,
+.vg-main:focus,
+.vg-main:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+/* ==========================================================================
+   ACERVO DE ACESSIBILIDADE GLOBAL (WCAG 2.1 AA / AAA)
+   ========================================================================== */
+
+/* 1. Escalas Dinâmicas de Fonte */
+html[data-font-size="normal"] {
+  font-size: 13px;
+}
+
+html[data-font-size="medio"] {
   font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+}
+
+html[data-font-size="grande"] {
+  font-size: 17px;
+}
+
+html[data-font-size="extragrande"] {
+  font-size: 19px;
+}
+
+/* 2. Redução de Movimento (Vestibular / Labirintite) */
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* 3. Foco Reforçado para Navegação por Teclado */
+html[data-enhanced-focus="true"] button:focus-visible,
+html[data-enhanced-focus="true"] input:focus-visible,
+html[data-enhanced-focus="true"] select:focus-visible,
+html[data-enhanced-focus="true"] textarea:focus-visible,
+html[data-enhanced-focus="true"] a:focus-visible,
+html[data-enhanced-focus="true"] [role="button"]:focus-visible,
+html[data-enhanced-focus="true"] [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid #0F51AE !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(15, 81, 174, 0.35) !important;
+}
+
+html[data-theme="dark"][data-enhanced-focus="true"] button:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] input:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] select:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] textarea:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] a:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] [role="button"]:focus-visible,
+html[data-theme="dark"][data-enhanced-focus="true"] [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid #60A5FA !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(96, 165, 250, 0.4) !important;
+}
+
+/* 4. Espaçamento Estendido de Texto (Dislexia / Legibilidade Aumentada) */
+html[data-text-spacing="true"] body,
+html[data-text-spacing="true"] p,
+html[data-text-spacing="true"] span,
+html[data-text-spacing="true"] label,
+html[data-text-spacing="true"] td,
+html[data-text-spacing="true"] th,
+html[data-text-spacing="true"] input,
+html[data-text-spacing="true"] select,
+html[data-text-spacing="true"] textarea,
+html[data-text-spacing="true"] button {
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.1em !important;
+  line-height: 1.65 !important;
+}
+
+/* 5. Contraste Confortável / Alto Contraste */
+html[data-contrast="comfortable"],
+html[data-contrast="high"] {
+  --eff-border-card: #94a3b8;
+  --eff-border-light: #94a3b8;
+  --eff-text-secondary: #1e293b;
+  --eff-text-muted: #334155;
+}
+
+html[data-contrast="comfortable"] input,
+html[data-contrast="comfortable"] select,
+html[data-contrast="comfortable"] textarea,
+html[data-contrast="high"] input,
+html[data-contrast="high"] select,
+html[data-contrast="high"] textarea {
+  border-width: 2px !important;
+  border-color: #64748b !important;
+}
+
+html[data-theme="dark"][data-contrast="comfortable"],
+html[data-theme="dark"][data-contrast="high"] {
+  --eff-dark-border: #60a5fa;
+  --eff-dark-text-secondary: #f1f5f9;
+}
+
+/* ==========================================================================
+   UTILITÁRIOS DE ACESSIBILIDADE GLOBAL (A11Y)
+   ========================================================================== */
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+html[data-theme="dark"][data-contrast="comfortable"] input,
+html[data-theme="dark"][data-contrast="comfortable"] select,
+html[data-theme="dark"][data-contrast="comfortable"] textarea,
+html[data-theme="dark"][data-contrast="high"] input,
+html[data-theme="dark"][data-contrast="high"] select,
+html[data-theme="dark"][data-contrast="high"] textarea {
+  border-width: 2px !important;
+  border-color: #93c5fd !important;
+}
+
+/* ==========================================================================
+   ESTILOS DE MODO SOMENTE LEITURA / CONSULTA (PERFIL ANALISTA)
+   ========================================================================== */
+.readonly-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 81, 174, 0.08);
+  border: 1px solid rgba(15, 81, 174, 0.25);
+  color: #0F51AE;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+[data-theme='dark'] .readonly-mode-badge {
+  background: rgba(147, 197, 253, 0.12);
+  border-color: rgba(147, 197, 253, 0.3);
+  color: #93C5FD;
+}
+
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-left: 4px solid #2563EB;
+  color: #1E3A8A;
+  padding: 12px 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+[data-theme='dark'] .readonly-banner {
+  background: rgba(30, 58, 138, 0.25);
+  border-color: rgba(59, 130, 246, 0.35);
+  border-left-color: #60A5FA;
+  color: #DBEAFE;
+}
+
+.readonly-banner strong {
+  font-weight: 700;
+}
+
+.driver-readonly-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+[data-theme='dark'] .driver-readonly-tag {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #CBD5E1;
 }

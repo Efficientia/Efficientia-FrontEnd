@@ -1,0 +1,58 @@
+.eff-brand-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  user-select: none;
+}
+
+.eff-brand-icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.eff-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.eff-brand-title {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--eff-logo-blue, #0F51AE);
+  letter-spacing: -0.03em;
+  transition: color 0.2s ease;
+}
+
+.eff-brand-ia {
+  color: #56D867;
+}
+
+.eff-brand-tagline {
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #56D867;
+  letter-spacing: -0.01em;
+  margin-top: 1px;
+}
+
+/* Forçado Claro */
+.eff-brand-light .eff-brand-title {
+  color: #0F51AE;
+}
+
+/* Forçado Escuro */
+.eff-brand-dark .eff-brand-title {
+  color: #FFF8E1;
+}
+
+/* Modo escuro automático */
+html[data-theme='dark'] .eff-brand-title,
+[data-theme='dark'] .eff-brand-title,
+.dark .eff-brand-title,
+.bg-dark .eff-brand-title {
+  color: #FFF8E1;
+}
