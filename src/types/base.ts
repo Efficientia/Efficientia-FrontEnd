@@ -43,6 +43,21 @@ export interface FazendaResponse {
   nome: string;
 }
 
+export interface LocalDiarioItem {
+  id: number;
+  nome: string;
+  cidade?: string | null;
+  uf?: string | null;
+}
+
+export interface PaginaLocaisResponse {
+  itens: LocalDiarioItem[];
+  pagina: number;
+  tamanho: number;
+  total: number;
+  totalPaginas: number;
+}
+
 export interface CriarCavaloRequest {
   placa: string;
   ativo: boolean;

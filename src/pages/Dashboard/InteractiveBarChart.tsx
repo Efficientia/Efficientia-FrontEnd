@@ -333,8 +333,8 @@ export const InteractiveBarChart: React.FC<InteractiveBarChartProps> = ({
         <div className="eff-chart-body">
           {/* Rótulo de escala Y / Ceiling */}
           <div className="eff-chart-y-axis" aria-hidden="true">
-            {steps.map((val) => (
-              <span key={val} className="eff-y-step">
+            {steps.map((val, stepIdx) => (
+              <span key={`${val}-${stepIdx}`} className="eff-y-step">
                 {val.toLocaleString('pt-BR')}
               </span>
             ))}

@@ -6,3 +6,10 @@ export const DASHBOARD_ALLOWED_ROLES = [
   'FUNCIONARIO_FRIBOI',
   'SISTEMA_DEV',
 ] as const;
+
+export const ADMIN_ONLY_ROLES = [
+  'ADMIN',
+  'ADMINISTRADOR',
+  'ADM_EMPRESA',
+  'SISTEMA_DEV',
+] as const;

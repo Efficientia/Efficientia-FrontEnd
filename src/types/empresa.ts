@@ -22,6 +22,7 @@ export interface CriarEmpresaRequest {
   numero?: string | null;
   cidade?: string | null;
   estado?: string | null;
+  uf?: string | null;
   logoUrl?: string | null;
   endereco?: EnderecoDto | null;
 }

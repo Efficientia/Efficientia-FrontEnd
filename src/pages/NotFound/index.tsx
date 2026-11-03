@@ -1,13 +1,41 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { LogoBoiIcon, ArrowRightIcon } from '../../components/icons';
+import './NotFound.css';
 
 export function NotFound() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
   return (
-    <main id="main-content" tabIndex={-1} style={{ textAlign: 'center', padding: '50px' }}>
-      <h1>404 - Página não encontrada</h1>
-      <p>Ops! A página que você está procurando não existe ou foi movida.</p>
-      <Link to="/" style={{ color: '#27ae60', fontWeight: 'bold' }}>
-        Voltar para o Início
-      </Link>
+    <main id="main-content" tabIndex={-1} className="notfound-container">
+      <div className="notfound-card">
+        <LogoBoiIcon size={52} className="notfound-logo" />
+        <span className="notfound-code">404</span>
+        <h1 className="notfound-title">Página não encontrada</h1>
+        <p className="notfound-text">
+          A rota que você tentou acessar não existe, foi alterada ou você não possui permissão para visualizá-la.
+        </p>
+        <div className="notfound-actions">
+          <button
+            type="button"
+            className="notfound-btn-secondary"
+            onClick={() => navigate('/')}
+          >
+            Ir para o Início
+          </button>
+          <button
+            type="button"
+            className="notfound-btn-primary"
+            onClick={() => navigate(isAuthenticated ? '/visao-geral' : '/login')}
+          >
+            <span>{isAuthenticated ? 'Voltar ao Painel' : 'Fazer Login'}</span>
+            <ArrowRightIcon size={16} />
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
+
+export default NotFound;

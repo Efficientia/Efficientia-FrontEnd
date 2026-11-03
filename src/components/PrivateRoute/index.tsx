@@ -17,11 +17,13 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
     return () => cancelAnimationFrame(frame);
   }, [isLoading]);
 
-
   // Enquanto restaura a sessão armazenada, evita redirecionamentos falsos
   if (isLoading) {
     return (
-      <main id="main-content" tabIndex={-1} aria-busy="true"
+      <main
+        id="main-content"
+        tabIndex={-1}
+        aria-busy="true"
         style={{
           display: 'flex',
           justifyContent: 'center',
@@ -31,7 +33,9 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
           color: '#333',
         }}
       >
-        <p role="status" aria-live="polite">Carregando sessão...</p>
+        <p role="status" aria-live="polite">
+          Carregando sessão...
+        </p>
       </main>
     );
   }
@@ -40,13 +44,20 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  const onboardingCompleted = (() => {
-    try {
-      return localStorage.getItem('@efficientia:onboarding:completed') === 'true';
-    } catch {
-      return false;
-    }
-  })() || (empresa?.cadastroCompleto === true && empresa.proximoPasso === 'PAINEL_ADMINISTRATIVO');
+
+  const isOnlyOperational = !roles.some((r) =>
+    ['ADMIN', 'ADMINISTRADOR', 'ADM_EMPRESA', 'SISTEMA_DEV'].includes(r.toUpperCase())
+  );
+
+  const onboardingCompleted =
+    isOnlyOperational ||
+    (() => {
+      try {
+        return localStorage.getItem('@efficientia:onboarding:completed') === 'true';
+      } catch {
+        return false;
+      }
+    })() || (empresa?.cadastroCompleto === true && empresa.proximoPasso === 'PAINEL_ADMINISTRATIVO');
 
   if (!onboardingCompleted) {
     const currentStep = (() => {
@@ -56,15 +67,16 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
         return null;
       }
     })();
-    const pendingPath = currentStep === '3'
-      ? '/onboarding/etapa-3'
-      : currentStep === '2'
-      ? '/onboarding/etapa-2'
-      : empresa?.etapaCadastro === 3
-      ? '/onboarding/etapa-3'
-      : empresa?.etapaCadastro === 2
-      ? '/onboarding/etapa-2'
-      : '/onboarding';
+    const pendingPath =
+      currentStep === '3'
+        ? '/onboarding/etapa-3'
+        : currentStep === '2'
+        ? '/onboarding/etapa-2'
+        : empresa?.etapaCadastro === 3
+        ? '/onboarding/etapa-3'
+        : empresa?.etapaCadastro === 2
+        ? '/onboarding/etapa-2'
+        : '/onboarding';
     return <Navigate to={pendingPath} replace state={{ from: location.pathname }} />;
   }
 
@@ -75,7 +87,7 @@ export function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
     );
 
     if (!temPermissao) {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/visao-geral" replace />;
     }
   }
 

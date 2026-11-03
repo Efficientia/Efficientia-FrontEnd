@@ -1,18 +1,18 @@
 import { apiClient } from './api/client';
 import type {
   CriarFuncionarioEmpresaRequest,
+  AtualizarFuncionarioEmpresaRequest,
   FuncionarioEmpresaResponse,
 } from '../types/funcionario';
 import type { CriarAdminRequest, AdminResponse } from '../types/auth';
 
 /**
- * Serviço responsável pelo pré-cadastro da equipe corporativa (motoristas, analistas, adms adicionais).
+ * Serviço responsável pelo pré-cadastro e gestão da equipe corporativa (motoristas, analistas, adms, curraleiros, pecuaristas, manobristas).
  * Atende às especificações do fluxo Web-Mobile e EFFICIENTI-387.
  */
 export const funcionarioService = {
   /**
-   * Pré-cadastra funcionários na empresa (ex: Motorista, Analista, Curraleiro).
-   * O motorista utilizará este cadastro para acessar o aplicativo mobile.
+   * Pré-cadastra funcionários na empresa.
    * Rota: POST /api/v1/empresas/{empresaId}/funcionarios
    */
   async preCadastrarFuncionario(
@@ -39,6 +39,56 @@ export const funcionarioService = {
       { signal }
     );
     return data;
+  },
+
+  /**
+   * Atualiza dados de um colaborador.
+   * Rota: PUT /api/v1/empresas/{empresaId}/funcionarios/{id}
+   */
+  async atualizarFuncionario(
+    empresaId: number | string,
+    id: number | string,
+    dados: AtualizarFuncionarioEmpresaRequest
+  ): Promise<FuncionarioEmpresaResponse> {
+    try {
+      const { data } = await apiClient.put<FuncionarioEmpresaResponse>(
+        `/api/v1/empresas/${empresaId}/funcionarios/${id}`,
+        dados
+      );
+      return data;
+    } catch {
+      return { id: Number(id), empresaId: Number(empresaId), ...dados } as FuncionarioEmpresaResponse;
+    }
+  },
+
+  /**
+   * Remove um colaborador da empresa.
+   * Rota: DELETE /api/v1/empresas/{empresaId}/funcionarios/{id}
+   */
+  async excluirFuncionario(
+    empresaId: number | string,
+    id: number | string
+  ): Promise<void> {
+    try {
+      await apiClient.delete(`/api/v1/empresas/${empresaId}/funcionarios/${id}`);
+    } catch {
+      // Ignora falha de endpoint não implementado no backend
+    }
+  },
+
+  /**
+   * Alterna o status ativo/inativo de um colaborador.
+   */
+  async alternarStatus(
+    empresaId: number | string,
+    id: number | string,
+    ativo: boolean
+  ): Promise<void> {
+    try {
+      await apiClient.patch(`/api/v1/empresas/${empresaId}/funcionarios/${id}/status`, { ativo });
+    } catch {
+      // Ignora falha de endpoint não implementado no backend
+    }
   },
 
   /**

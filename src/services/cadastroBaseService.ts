@@ -13,6 +13,7 @@ import type {
   CriarUsuarioRequest,
   EnderecoResponse,
   FazendaResponse,
+  PaginaLocaisResponse,
   UsuarioCadastroResponse,
 } from '../types/base';
 
@@ -31,13 +32,19 @@ export const cadastroBaseService = {
     const { data } = await apiClient.post<FazendaResponse>('/api/v1/fazendas', request, { signal });
     return data;
   },
-  async listarFazendas(signal?: AbortSignal): Promise<FazendaResponse[]> {
-    const { data } = await apiClient.get<FazendaResponse[]>('/api/v1/locais-diario/fazendas', { signal });
+  async listarFazendas(q = '', pagina = 0, tamanho = 50, signal?: AbortSignal): Promise<PaginaLocaisResponse> {
+    const { data } = await apiClient.get<PaginaLocaisResponse>('/api/v1/locais-diario/fazendas', {
+      params: { q, pagina, tamanho },
+      signal,
+    });
     return data;
   },
 
-  async listarUnidadesFrigorificas(signal?: AbortSignal): Promise<FazendaResponse[]> {
-    const { data } = await apiClient.get<FazendaResponse[]>('/api/v1/locais-diario/unidades-frigorificas', { signal });
+  async listarUnidadesFrigorificas(q = '', pagina = 0, tamanho = 50, signal?: AbortSignal): Promise<PaginaLocaisResponse> {
+    const { data } = await apiClient.get<PaginaLocaisResponse>('/api/v1/locais-diario/unidades-frigorificas', {
+      params: { q, pagina, tamanho },
+      signal,
+    });
     return data;
   },
   async cadastrarCavalo(request: CriarCavaloRequest, signal?: AbortSignal): Promise<CavaloResponse> {

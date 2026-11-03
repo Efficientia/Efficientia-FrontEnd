@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { DASHBOARD_ALLOWED_ROLES } from './constants/auth';
+
 const Home = lazy(() => import('./pages/Home').then(({ Home }) => ({ default: Home })));
 const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default: Login })));
 const Cadastro = lazy(() => import('./pages/Cadastro').then(({ Cadastro }) => ({ default: Cadastro })));
@@ -16,6 +17,9 @@ const Configuracao = lazy(() => import('./pages/Configuracao').then(({ Configura
 const Motoristas = lazy(() => import('./pages/Motoristas').then(({ Motoristas }) => ({ default: Motoristas })));
 const Frota = lazy(() => import('./pages/Frota').then(({ Frota }) => ({ default: Frota })));
 const FazendasUnidades = lazy(() => import('./pages/FazendasUnidades').then(({ FazendasUnidades }) => ({ default: FazendasUnidades })));
+const CadastrosConsulta = lazy(() =>
+  import('./pages/CadastrosConsulta').then(({ CadastrosConsulta }) => ({ default: CadastrosConsulta }))
+);
 const EsqueciSenha = lazy(() =>
   import('./pages/EsqueciSenha').then(({ EsqueciSenha }) => ({ default: EsqueciSenha }))
 );
@@ -54,20 +58,21 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
     return this.props.children;
   }
 }
+
 function RouteFocusManager() {
   const { pathname } = useLocation();
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      document.getElementById('main-content')?.focus();
+      document.getElementById('main-content')?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   return null;
 }
-function AppLayout() {
 
+function AppLayout() {
   return (
     <>
       <Routes>
@@ -78,17 +83,25 @@ function AppLayout() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/onboarding/etapa-2" element={<OnboardingStep2 />} />
         <Route path="/onboarding/etapa-3" element={<OnboardingStep3 />} />
+
+        {/* Rotas compartilhadas acessíveis por Administrador e Analista */}
         <Route element={<PrivateRoute allowedRoles={[...DASHBOARD_ALLOWED_ROLES]} />}>
           <Route path="/visao-geral" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/auditoria" element={<Dashboard initialTab="audit" />} />
-          <Route path="/motoristas" element={<Motoristas />} />
-          <Route path="/motorista" element={<Navigate to="/motoristas" replace />} />
+          <Route path="/diarios" element={<Dashboard initialTab="reports" />} />
+          <Route path="/configuracao" element={<Configuracao />} />
+          <Route path="/colaboradores" element={<Motoristas />} />
+          <Route path="/usuarios" element={<Navigate to="/colaboradores" replace />} />
+          <Route path="/motoristas" element={<Navigate to="/colaboradores" replace />} />
+          <Route path="/motorista" element={<Navigate to="/colaboradores" replace />} />
           <Route path="/frota" element={<Frota />} />
           <Route path="/fazenda-unidades" element={<FazendasUnidades />} />
-          <Route path="/configuracao" element={<Configuracao />} />
-          <Route path="/diarios" element={<Dashboard initialTab="reports" />} />
+          <Route path="/cadastros-consulta" element={<CadastrosConsulta />} />
+          <Route path="/cadastros" element={<Navigate to="/cadastros-consulta" replace />} />
+          <Route path="/tabelas" element={<Navigate to="/cadastros-consulta" replace />} />
         </Route>
+
         <Route path="/ai-test" element={<AiTestWorkbench />} />
         {DevApiTestWorkbench && (
           <Route path="/dev/api-test" element={<DevApiTestWorkbench />} />

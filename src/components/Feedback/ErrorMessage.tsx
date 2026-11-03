@@ -1,32 +1,39 @@
 import React from 'react';
+import { AlertTriangleIcon, CloseIcon } from '../icons';
 
 export interface ErrorMessageProps {
   titulo?: string;
   mensagem: string;
   onRetry?: () => void;
   onClose?: () => void;
+  detalhes?: string;
 }
 
+/**
+ * Componente para exibição de erros consistentes na aplicação.
+ * 
+ * Segue o padrão de Feedback e acessibilidade (role="alert").
+ */
 export const ErrorMessage: React.FC<ErrorMessageProps> = ({
-  titulo = 'Atenção',
+  titulo = 'Ocorreu um erro',
   mensagem,
   onRetry,
   onClose,
+  detalhes,
 }) => {
   return (
     <div
       role="alert"
       style={{
-        backgroundColor: '#fef2f2',
-        border: '1px solid #fecaca',
-        borderRadius: '0.5rem',
         padding: '1rem',
-        margin: '0.5rem 0',
+        borderRadius: '8px',
+        backgroundColor: '#fee2e2',
+        border: '1px solid #ef4444',
+        color: '#991b1b',
+        margin: '1rem 0',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.5rem',
-        color: '#991b1b',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        gap: '0.75rem',
       }}
     >
       <div
@@ -37,7 +44,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+          <AlertTriangleIcon size={18} />
           <strong style={{ fontSize: '0.95rem' }}>{titulo}</strong>
         </div>
         {onClose && (
@@ -52,9 +59,11 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
               color: '#991b1b',
               fontSize: '1rem',
               lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            ✕
+            <CloseIcon size={14} />
           </button>
         )}
       </div>
@@ -63,8 +72,33 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
         {mensagem}
       </p>
 
+      {detalhes && (
+        <details
+          style={{
+            fontSize: '0.75rem',
+            color: '#7f1d1d',
+            cursor: 'pointer',
+            marginTop: '0.25rem',
+          }}
+        >
+          <summary>Detalhes técnicos</summary>
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              backgroundColor: '#fecaca',
+              padding: '0.5rem',
+              borderRadius: '4px',
+              marginTop: '0.25rem',
+            }}
+          >
+            {detalhes}
+          </pre>
+        </details>
+      )}
+
       {onRetry && (
-        <div style={{ marginTop: '0.25rem' }}>
+        <div>
           <button
             type="button"
             onClick={onRetry}
@@ -72,10 +106,10 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
               backgroundColor: '#dc2626',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '0.375rem',
-              padding: '0.35rem 0.75rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
+              borderRadius: '4px',
+              padding: '0.4rem 0.8rem',
+              fontSize: '0.875rem',
+              fontWeight: 500,
               cursor: 'pointer',
             }}
           >
@@ -86,5 +120,3 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
     </div>
   );
 };
-
-export default ErrorMessage;

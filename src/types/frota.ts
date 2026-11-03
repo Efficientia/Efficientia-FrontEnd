@@ -17,6 +17,11 @@ export interface CriarCaminhaoRequest {
 }
 
 export interface AtualizarCaminhaoRequest {
+  tipo?: string | null;
+  placaCarreta?: string | null;
+  statusUso?: string | null;
+  motoristaAtualId?: number | null;
+  motoristaAtualNome?: string | null;
   placa?: string | null;
   empresaId?: number | null;
   capacidadeCabecas?: number | null;
@@ -33,6 +38,7 @@ export interface CaminhaoResponse {
   id: number;
   tipo: string;
   placa: string;
+  placaCarreta?: string | null;
   empresaId: number | null;
   ativo: boolean | null;
   dataVencimentoInspecao: string | null;

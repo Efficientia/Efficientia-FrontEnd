@@ -20,7 +20,6 @@ export class ApiRequestError extends Error {
   }
 }
 
-
 export function normalizeApiError(error: unknown): ApiRequestError {
   if (error instanceof ApiRequestError) {
     return error;
@@ -33,15 +32,32 @@ export function normalizeApiError(error: unknown): ApiRequestError {
     const title = typeof body?.title === 'string' ? body.title : undefined;
     const fieldErrors = body?.fieldErrors ?? {};
 
-    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || !error.response && /timeout|network error/i.test(error.message);
-    const normalizedMessage =
-      error.response?.status === 401
-        ? 'Sua sessão não está autenticada ou expirou. Entre novamente para continuar.'
-        : error.response?.status === 403
-        ? 'Seu usuário não tem permissão para consultar este recurso.'
-        : isTimeout
-        ? 'A API do Efficientia não respondeu no tempo esperado. O serviço pode estar acordando; tente novamente em alguns segundos.'
-        : detail ?? message ?? title ?? error.message;
+    const isTimeout =
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ETIMEDOUT' ||
+      (!error.response && /timeout|network error/i.test(error.message));
+
+    const isAuthRoute =
+      typeof error.config?.url === 'string' && error.config.url.includes('/auth');
+
+    const backendMessage = detail ?? message ?? title;
+
+    let normalizedMessage: string;
+    if (backendMessage && !/unauthorized|forbidden|internal server error/i.test(backendMessage)) {
+      normalizedMessage = backendMessage;
+    } else if (error.response?.status === 401) {
+      normalizedMessage = isAuthRoute
+        ? 'Credenciais inválidas. Verifique o código da empresa, e-mail e senha.'
+        : 'Sua sessão expirou ou não está autenticada. Faça login novamente.';
+    } else if (error.response?.status === 403) {
+      normalizedMessage = 'Acesso não autorizado para esta operação.';
+    } else if (isTimeout) {
+      normalizedMessage =
+        'A API do Efficientia não respondeu no tempo esperado. Tente novamente em instantes.';
+    } else {
+      normalizedMessage = backendMessage ?? error.message;
+    }
+
     return new ApiRequestError(
       normalizedMessage,
       error.response?.status,
@@ -54,5 +70,5 @@ export function normalizeApiError(error: unknown): ApiRequestError {
     return new ApiRequestError(error.message);
   }
 
-  return new ApiRequestError('Erro desconhecido na comunicação com o servidor.');
+  return new ApiRequestError('Erro inesperado na comunicação com o servidor.');
 }

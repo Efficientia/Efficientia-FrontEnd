@@ -1,4 +1,4 @@
-import { apiClient } from './api/client';
+import { apiClient, getBaseUrl } from './api/client';
 import { createIdempotencyKey } from './api/idempotency';
 import type { CaminhaoRelatorioResponse, VincularCaminhaoRelatorioRequest } from '../types/frota';
 import type {
@@ -104,10 +104,11 @@ export const relatorioService = {
     idempotencyKey?: string,
     signal?: AbortSignal
   ): Promise<RelatorioViagemResponse> {
+    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
     const { data } = await apiClient.patch<RelatorioViagemResponse>(
       `/api/v1/relatorios-viagem/${id}/status`,
       null,
-      { params: { status }, headers: idempotencyHeaders(idempotencyKey), signal }
+      { params: { status }, headers, signal }
     );
     return data;
   },
@@ -150,6 +151,9 @@ export const relatorioService = {
       { headers: idempotencyHeaders(idempotencyKey), signal }
     );
     return data;
+  },
+  obterUrlAssinatura(id: number, papel: string): string {
+    return `${getBaseUrl()}/api/v1/relatorios-viagem/${id}/assinaturas/${papel.toLowerCase()}/conteudo`;
   },
 };
 

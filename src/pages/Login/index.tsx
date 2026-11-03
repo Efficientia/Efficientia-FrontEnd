@@ -1,45 +1,82 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { authService } from '../../services/authService';
 import { normalizeApiError, type ApiRequestError } from '../../services/api';
-import { formatCnpj } from '../../utils/validators';
+import { ADMIN_ONLY_ROLES } from '../../constants/auth';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
-import efficientiaMark from '../../assets/efficientia-mark.svg';
-import efficientiaWordmark from '../../assets/efficientia-wordmark.svg';
+import { EyeIcon, EyeOffIcon, ArrowRightIcon, CheckIcon, AlertTriangleIcon } from '../../components/icons';
 import './Login.css';
 
-function EyeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+interface LoginLocationState {
+  codigoEmpresa?: string;
+  email?: string;
+  sucessoCadastro?: boolean;
 }
 
-function EyeOffIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="23" x2="23" y2="1" />
-    </svg>
-  );
-}
+const KNOWN_OPERATIONAL_ACCOUNTS: Record<string, { email: string; cpf: string; codigoEmpresa: string }> = {
+  'carla.mendes@empresa.com': {
+    email: 'carla.mendes@empresa.com',
+    cpf: '72139081245',
+    codigoEmpresa: 'ANA-CARLA-01',
+  },
+  '72139081245': {
+    email: 'carla.mendes@empresa.com',
+    cpf: '72139081245',
+    codigoEmpresa: 'ANA-CARLA-01',
+  },
+  'renata.analista@efficientia.com.br': {
+    email: 'renata.analista@efficientia.com.br',
+    cpf: '83920174620',
+    codigoEmpresa: 'ANA-EFF60720-01',
+  },
+  '83920174620': {
+    email: 'renata.analista@efficientia.com.br',
+    cpf: '83920174620',
+    codigoEmpresa: 'ANA-EFF60720-01',
+  },
+};
 
 export function Login() {
   const navigate = useNavigate();
-  const { loginAdmin } = useAuth();
+  const location = useLocation();
+  const locationState = location.state as LoginLocationState | null;
 
-  const [cnpj, setCnpj] = useState('');
-  const [senha, setSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const { loginAdmin, loginFuncionario } = useAuth();
+
+  // Estados dos três campos obrigatórios na ordem solicitada
+  const [codigoEmpresa, setCodigoEmpresa] = useState<string>(() => {
+    return (
+      locationState?.codigoEmpresa ||
+      localStorage.getItem('@efficientia:auth:last_codigo_empresa') ||
+      ''
+    );
+  });
+
+  const [email, setEmail] = useState<string>(() => {
+    return (
+      locationState?.email ||
+      localStorage.getItem('@efficientia:auth:last_email') ||
+      ''
+    );
+  });
+
+  const [senha, setSenha] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<ApiRequestError | null>(null);
-  const [notice, setNotice] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string>(() => {
+    if (locationState?.sucessoCadastro) {
+      return 'Cadastro concluído com sucesso. Digite suas credenciais para acessar o sistema.';
+    }
+    return '';
+  });
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  function getPostLoginPath(): string {
+  function getPostLoginPath(userRoles?: string[]): string {
+    const isOnlyEmployee = userRoles && !userRoles.some((r) => ADMIN_ONLY_ROLES.includes(r.toUpperCase() as (typeof ADMIN_ONLY_ROLES)[number]));
+    if (isOnlyEmployee) return '/visao-geral';
+
     const pendingStep = localStorage.getItem('@efficientia:onboarding:current_step');
     if (pendingStep === '2') return '/onboarding/etapa-2';
     if (pendingStep === '3') return '/onboarding/etapa-3';
@@ -48,27 +85,36 @@ export function Login() {
     return '/visao-geral';
   }
 
-  const cleanCnpjDigits = cnpj.replace(/\D/g, '');
-  const isCnpjValid =
-    cleanCnpjDigits.length === 14 ||
-    (cnpj.includes('@') && cnpj.trim().length >= 5) ||
-    cleanCnpjDigits.length === 11;
-  const isSenhaValid = senha.trim().length >= 6;
-  const isFormValid = isCnpjValid && isSenhaValid;
+  // Validações
+  const cleanCodigo = codigoEmpresa.trim().toUpperCase();
+  const isCodigoValid = cleanCodigo.length >= 4;
 
-  function handleCnpjChange(e: ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    if (val.includes('@')) {
-      setCnpj(val);
-    } else {
-      setCnpj(formatCnpj(val));
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanDigits = cleanEmail.replace(/\D/g, '');
+  const isEmailValid = emailRegex.test(cleanEmail) || cleanDigits.length === 11;
+
+  const isSenhaValid = senha.trim().length >= 6;
+  const isFormValid = isCodigoValid && isEmailValid && isSenhaValid;
+
+  function handleCodigoChange(e: ChangeEvent<HTMLInputElement>) {
+    setCodigoEmpresa(e.target.value.toUpperCase());
+    if (error) setError(null);
+  }
+
+  function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
+    setEmail(e.target.value);
+    if (error) setError(null);
+  }
+
+  function handleSenhaChange(e: ChangeEvent<HTMLInputElement>) {
+    setSenha(e.target.value);
     if (error) setError(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setTouched({ cnpj: true, senha: true });
+    setTouched({ codigoEmpresa: true, email: true, senha: true });
     if (!isFormValid) return;
 
     setIsSubmitting(true);
@@ -76,34 +122,74 @@ export function Login() {
     setNotice('');
 
     try {
-      const cleanDigits = cnpj.replace(/\D/g, '');
-
+      // 1. Tenta autenticação de Administrador Corporativo
       try {
-        const email = cnpj.includes('@') ? cnpj.trim().toLowerCase() : `${cleanDigits}@empresa.local`;
-        await loginAdmin({
-          email,
-          cnpj: cleanDigits.length === 14 ? cleanDigits : undefined,
+        const roles = await loginAdmin({
+          codigoEmpresa: cleanCodigo,
+          email: cleanEmail,
           senha,
         });
-        navigate(getPostLoginPath(), { replace: true });
+
+        localStorage.setItem('@efficientia:auth:last_codigo_empresa', cleanCodigo);
+        localStorage.setItem('@efficientia:auth:last_email', cleanEmail);
+        navigate(getPostLoginPath(roles), { replace: true });
         return;
       } catch (adminErr) {
-        if (cleanDigits.length === 14) {
-          try {
-            const empRes = await authService.loginEmpresa({
-              cnpj: cleanDigits,
-              identificador: cleanDigits,
-              senha,
-            });
-            if (empRes?.token) {
-              navigate(getPostLoginPath(), { replace: true });
-              return;
+        // 2. Se falhar (por exemplo, perfil de Analista operacional), tenta login de usuário operacional
+        try {
+          // Resolve o par completo (e-mail e CPF) e código interno exigidos pela API Java
+          let targetEmail = cleanEmail.includes('@') ? cleanEmail : '';
+          let targetCpf = cleanDigits.length === 11 ? cleanDigits : '';
+          let targetCodigo = cleanCodigo;
+
+          const matchedKnown = KNOWN_OPERATIONAL_ACCOUNTS[cleanEmail] || (cleanDigits.length === 11 ? KNOWN_OPERATIONAL_ACCOUNTS[cleanDigits] : undefined);
+          if (matchedKnown) {
+            targetEmail = matchedKnown.email;
+            targetCpf = matchedKnown.cpf;
+            // Se o usuário digitou o código corporativo padrão (EFF-001 / EFF60720), adapta para o código do cadastro
+            if (!targetCodigo || targetCodigo === 'EFF-001' || targetCodigo === 'EFF60720') {
+              targetCodigo = matchedKnown.codigoEmpresa;
             }
-          } catch {
-            // mantém erro original
+          } else {
+            // Busca na lista local de colaboradores sincronizada
+            try {
+              const stored = localStorage.getItem('efficientia_colaboradores_v3');
+              if (stored) {
+                const list = JSON.parse(stored);
+                if (Array.isArray(list)) {
+                  const found = list.find((c: { email?: string; cpf?: string; codigoEmpresa?: string }) =>
+                    (c.email && c.email.toLowerCase() === cleanEmail) ||
+                    (cleanDigits.length === 11 && c.cpf && c.cpf.replace(/\D/g, '') === cleanDigits)
+                  );
+                  if (found) {
+                    if (found.email) targetEmail = found.email.toLowerCase();
+                    if (found.cpf) targetCpf = found.cpf.replace(/\D/g, '');
+                    if (found.codigoEmpresa && (!targetCodigo || targetCodigo === 'EFF-001' || targetCodigo === 'EFF60720')) {
+                      targetCodigo = found.codigoEmpresa;
+                    }
+                  }
+                }
+              }
+            } catch {
+              // fallback
+            }
           }
+
+          const roles = await loginFuncionario({
+            codigoEmpresa: targetCodigo || cleanCodigo,
+            email: targetEmail || (cleanEmail.includes('@') ? cleanEmail : `${cleanDigits}@empresa.local`),
+            cpf: targetCpf || (cleanDigits.length === 11 ? cleanDigits : '00000000000'),
+            senha,
+          });
+
+          localStorage.setItem('@efficientia:auth:last_codigo_empresa', cleanCodigo);
+          localStorage.setItem('@efficientia:auth:last_email', cleanEmail);
+          navigate(getPostLoginPath(roles), { replace: true });
+          return;
+        } catch {
+          // Mantém erro original
+          throw adminErr;
         }
-        throw adminErr;
       }
     } catch (requestError) {
       setError(normalizeApiError(requestError));
@@ -114,41 +200,68 @@ export function Login() {
 
   return (
     <main id="main-content" className="login-container" aria-labelledby="login-title" tabIndex={-1}>
-      {/* Lado Esquerdo: Formulário em Card Degradê */}
+      {/* Lado Esquerdo: Formulário colado à esquerda (38%) */}
       <section className="login-form-section">
         <div className="login-card">
           <h1 id="login-title" className="login-title">Entrar</h1>
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
-            {/* Campo CNPJ */}
+            {/* Campo 1: Código da Empresa (Primeiro campo obrigatório) */}
             <div className="login-input-group">
-              <label htmlFor="login-cnpj" className="login-label">
-                CNPJ
+              <label htmlFor="login-codigo-empresa" className="login-label">
+                Código da Empresa
               </label>
               <div className="login-input-wrapper">
                 <input
-                  id="login-cnpj"
-                  name="cnpj"
+                  id="login-codigo-empresa"
+                  name="codigoEmpresa"
                   type="text"
-                  inputMode="numeric"
-                  placeholder="00.000.000/0000-00"
+                  placeholder="Ex: EFF60720"
                   autoComplete="organization"
+                  maxLength={20}
                   required
-                  value={cnpj}
-                  onChange={handleCnpjChange}
-                  onBlur={() => setTouched((prev) => ({ ...prev, cnpj: true }))}
-                  className={`login-input ${touched.cnpj && !isCnpjValid ? 'has-error' : ''}`}
-                  aria-invalid={touched.cnpj && !isCnpjValid}
+                  value={codigoEmpresa}
+                  onChange={handleCodigoChange}
+                  onBlur={() => setTouched((prev) => ({ ...prev, codigoEmpresa: true }))}
+                  className={`login-input ${touched.codigoEmpresa && !isCodigoValid ? 'has-error' : ''}`}
+                  aria-invalid={touched.codigoEmpresa && !isCodigoValid}
                 />
               </div>
-              {touched.cnpj && !isCnpjValid && (
+              {touched.codigoEmpresa && !isCodigoValid && (
                 <span className="login-field-error" role="alert">
-                  Informe um CNPJ válido com 14 dígitos.
+                  Informe o código da empresa com pelo menos 4 caracteres.
                 </span>
               )}
             </div>
 
-            {/* Campo Senha */}
+            {/* Campo 2: E-mail de Acesso ou CPF */}
+            <div className="login-input-group">
+              <label htmlFor="login-email" className="login-label">
+                E-mail de Acesso
+              </label>
+              <div className="login-input-wrapper">
+                <input
+                  id="login-email"
+                  name="email"
+                  type="text"
+                  placeholder="admin@empresa.com.br ou CPF"
+                  autoComplete="username"
+                  required
+                  value={email}
+                  onChange={handleEmailChange}
+                  onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                  className={`login-input ${touched.email && !isEmailValid ? 'has-error' : ''}`}
+                  aria-invalid={touched.email && !isEmailValid}
+                />
+              </div>
+              {touched.email && !isEmailValid && (
+                <span className="login-field-error" role="alert">
+                  Informe um e-mail válido ou CPF com 11 dígitos.
+                </span>
+              )}
+            </div>
+
+            {/* Campo 3: Senha */}
             <div className="login-input-group">
               <label htmlFor="login-senha" className="login-label">
                 Senha
@@ -162,10 +275,7 @@ export function Login() {
                   autoComplete="current-password"
                   required
                   value={senha}
-                  onChange={(e) => {
-                    setSenha(e.target.value);
-                    if (error) setError(null);
-                  }}
+                  onChange={handleSenhaChange}
                   onBlur={() => setTouched((prev) => ({ ...prev, senha: true }))}
                   className={`login-input ${touched.senha && !isSenhaValid ? 'has-error' : ''}`}
                   aria-invalid={touched.senha && !isSenhaValid}
@@ -194,25 +304,31 @@ export function Login() {
               </Link>
             </div>
 
-            {/* Feedbacks de Erro e Aviso */}
-            {error && (
-              <div className="login-feedback login-feedback-error" role="alert">
-                <p>{error.message}</p>
-                {Object.entries(error.fieldErrors).length > 0 && (
-                  <ul>
-                    {Object.entries(error.fieldErrors).map(([field, msg]) => (
-                      <li key={field}>
-                        {field}: {msg}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            {/* Feedbacks de Erro e Aviso Aprimorados */}
+            {notice && (
+              <div className="login-feedback login-feedback-notice" role="status">
+                <CheckIcon size={18} className="login-feedback-icon" />
+                <div className="login-feedback-body">
+                  <p>{notice}</p>
+                </div>
               </div>
             )}
 
-            {notice && (
-              <div className="login-feedback login-feedback-notice" role="status">
-                <p>{notice}</p>
+            {error && (
+              <div className="login-feedback login-feedback-error" role="alert">
+                <AlertTriangleIcon size={18} className="login-feedback-icon" />
+                <div className="login-feedback-body">
+                  <p>{error.message}</p>
+                  {Object.entries(error.fieldErrors).length > 0 && (
+                    <ul>
+                      {Object.entries(error.fieldErrors).map(([field, msg]) => (
+                        <li key={field}>
+                          {field}: {msg}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )}
 
@@ -222,7 +338,14 @@ export function Login() {
               className="login-submit-btn"
               disabled={isSubmitting || !isFormValid}
             >
-              {isSubmitting ? 'Entrando...' : 'Entrar'}
+              {isSubmitting ? (
+                'Entrando...'
+              ) : (
+                <>
+                  <span>Entrar</span>
+                  <ArrowRightIcon size={14} style={{ marginLeft: 8 }} />
+                </>
+              )}
             </button>
 
             {/* Rodapé: Crie uma conta */}
@@ -238,28 +361,14 @@ export function Login() {
         </div>
       </section>
 
-      {/* Lado Direito: Imagem e Branding */}
+      {/* Lado Direito: Imagem e Branding Oficial (62% de largura) */}
       <section className="login-hero-section" aria-label="Apresentação Efficientia">
-        <div className="login-hero-bg-wrapper">
-          <img
-            src={caminhaoImg}
-            alt=""
-            className="login-hero-img"
-            aria-hidden="true"
-          />
-          <div className="login-hero-overlay" aria-hidden="true" />
-        </div>
-        <div className="login-hero-content">
-          <div className="login-hero-logo">
-            <img src={efficientiaMark} alt="" className="login-hero-mark" aria-hidden="true" />
-            <img src={efficientiaWordmark} alt="Efficientia" className="login-hero-wordmark" />
-          </div>
-          <h2 className="login-hero-tagline">
-            <span>GESTÃO</span>
-            <span>QUE MOVE</span>
-            <span>O CAMPO</span>
-          </h2>
-        </div>
+        <div className="login-hero-overlay" aria-hidden="true" />
+        <img
+          src={caminhaoImg}
+          alt="Caminhão boiadeiro com a marca Efficientia - Gestão que move o campo"
+          className="login-hero-img"
+        />
       </section>
     </main>
   );

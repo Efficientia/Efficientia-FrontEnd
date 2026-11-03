@@ -3,8 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
 import {
-  BullBrandLogo,
-} from '../Dashboard/DashboardIcons';
+  LogoCompletaIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
+  CheckIcon,
+  RouteActiveIcon,
+  ShieldCheckIcon,
+} from '../../components/icons';
+import { checkPasswordSecurity, generateSecurePassword } from '../../utils/passwordSecurity';
 import './Onboarding.css';
 
 const STEP3_STORAGE_KEY = '@efficientia:onboarding:step3';
@@ -58,16 +66,63 @@ export function OnboardingStep3() {
   const navigate = useNavigate();
   const { empresa, cadastrarPrimeiroAdmin } = useAuth();
   const [data, setData] = useState<Step3Data>(loadStep3Data);
-  const [operationRegion] = useState(() => {
+  const [reviewSummary] = useState(() => {
+    let pecuaristaInfo = 'Pecuarista cadastrado';
+    let fazendaInfo = 'Fazenda de origem';
     try {
-      const stored = localStorage.getItem('@efficientia:onboarding:step2');
-      const region = stored ? (JSON.parse(stored) as { regiaoAtuacao?: string }).regiaoAtuacao : '';
-      return region ? region.replaceAll('_', ' ') : 'Não informado';
+      const pecRaw = localStorage.getItem('@efficientia:onboarding:pecuarista');
+      if (pecRaw) {
+        const pec = JSON.parse(pecRaw);
+        if (pec.nome) pecuaristaInfo = `${pec.nome}`;
+        if (pec.nomeFazenda) fazendaInfo = `${pec.nomeFazenda} (${pec.municipioFazenda || ''}/${pec.ufFazenda || 'UF'})`;
+      }
     } catch {
-      return 'Não informado';
+      // fallback
     }
+
+    let frigInfo = 'Unidade frigorífica';
+    let equipeInfo = 'Analista, Manobrista e Curraleiro';
+    let motoristaInfo = 'Motorista condutor';
+    let frotaInfo = 'Cavalo e Carreta boiadeira';
+    let tempoMax = '12h contínuas';
+
+    try {
+      const step2Raw = localStorage.getItem('@efficientia:onboarding:step2');
+      if (step2Raw) {
+        const s2 = JSON.parse(step2Raw);
+        if (s2.unidade?.nome) {
+          frigInfo = `${s2.unidade.nome} (${s2.unidade.municipio || ''}/${s2.unidade.uf || 'UF'})`;
+        }
+        if (s2.equipe?.analistaNome) {
+          equipeInfo = `Analista: ${s2.equipe.analistaNome}`;
+        }
+        if (s2.motorista?.nome) {
+          motoristaInfo = `${s2.motorista.nome} (Cat. ${s2.motorista.categoriaCnh || 'E'})`;
+        }
+        if (s2.frota?.cavaloPlaca && s2.frota?.carretaPlaca) {
+          frotaInfo = `Cavalo: ${s2.frota.cavaloPlaca} • Carreta: ${s2.frota.carretaPlaca}`;
+        }
+        if (s2.parametros?.tempoMaxViagemHoras) {
+          tempoMax = `${s2.parametros.tempoMaxViagemHoras}h máx`;
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    return {
+      pecuaristaInfo,
+      fazendaInfo,
+      frigInfo,
+      equipeInfo,
+      motoristaInfo,
+      frotaInfo,
+      tempoMax,
+    };
   });
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [pwdGeneratedNotice, setPwdGeneratedNotice] = useState<string | null>(null);
+  const [showPwd, setShowPwd] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
     try {
@@ -81,6 +136,15 @@ export function OnboardingStep3() {
     setData((current) => ({ ...current, [field]: value }));
   };
 
+  const handleGeneratePassword = () => {
+    const generated = generateSecurePassword();
+    update('senha', generated);
+    update('confirmarSenha', generated);
+    setShowPwd(true);
+    setPwdGeneratedNotice('Senha segura gerada e aplicada nos dois campos!');
+    setFeedback(null);
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!data.nome.trim() || !data.cpf.trim() || !data.email.trim() || !data.telefone.trim()) {
@@ -89,6 +153,11 @@ export function OnboardingStep3() {
     }
     if (!data.senha || data.senha.length < 6) {
       setFeedback('Informe uma senha com pelo menos 6 caracteres.');
+      return;
+    }
+    const pwdSecurity = checkPasswordSecurity(data.senha);
+    if (pwdSecurity.isCompromised) {
+      setFeedback('A senha informada é comum e vulnerável a vazamentos. Clique em "Gerar senha segura" para definir uma credencial protegida.');
       return;
     }
     if (data.senha !== data.confirmarSenha) {
@@ -138,7 +207,9 @@ export function OnboardingStep3() {
     <div className="onb-shell">
       <header className="vg-topbar">
         <div className="vg-topbar-left">
-          <div className="vg-brand"><BullBrandLogo /><div className="vg-brand-text"><span className="vg-brand-title">Efficien<span className="vg-brand-highlight">tia</span></span><span className="vg-brand-Check"><span className="vg-brand-green">Eficiência</span> que viaja junto com você</span></div></div>
+          <div className="vg-brand">
+            <LogoCompletaIcon height={42} className="vg-brand-logo" />
+          </div>
           <div className="vg-topbar-divider" aria-hidden="true" />
           <div className="vg-page-heading"><h1>Onboarding Inicial</h1><p className="vg-page-subtitle">Passo 3 • Administrador da conta e revisão</p></div>
         </div>
@@ -167,22 +238,119 @@ export function OnboardingStep3() {
                   <div className="onb-form-field"><label htmlFor="onb3-nome" className="onb-label">Nome completo <span className="onb-req">*</span></label><input id="onb3-nome" type="text" className="onb-input" value={data.nome} onChange={(event) => update('nome', event.target.value)} autoComplete="name" required /></div>
                   <div className="onb-form-row"><div className="onb-form-field onb-field-left"><label htmlFor="onb3-cpf" className="onb-label">CPF <span className="onb-req">*</span></label><input id="onb3-cpf" type="text" className="onb-input" value={data.cpf} onChange={(event) => update('cpf', formatCpf(event.target.value))} required /></div><div className="onb-form-field onb-field-right"><label htmlFor="onb3-cargo" className="onb-label">Cargo</label><input id="onb3-cargo" type="text" className="onb-input" value={data.cargo} onChange={(event) => update('cargo', event.target.value)} /></div></div>
                   <div className="onb-form-row"><div className="onb-form-field onb-field-left"><label htmlFor="onb3-email" className="onb-label">E-mail de acesso <span className="onb-req">*</span></label><input id="onb3-email" type="email" className="onb-input" value={data.email} onChange={(event) => update('email', event.target.value)} autoComplete="email" required /></div><div className="onb-form-field onb-field-right"><label htmlFor="onb3-telefone" className="onb-label">Telefone <span className="onb-req">*</span></label><input id="onb3-telefone" type="tel" className="onb-input" value={data.telefone} onChange={(event) => update('telefone', formatPhone(event.target.value))} autoComplete="tel" required /></div></div>
-                  <div className="onb-form-row"><div className="onb-form-field onb-field-left"><label htmlFor="onb3-senha" className="onb-label">Senha de acesso</label><input id="onb3-senha" type="password" className="onb-input" value={data.senha} onChange={(event) => update('senha', event.target.value)} autoComplete="new-password" /></div><div className="onb-form-field onb-field-right"><label htmlFor="onb3-confirmar" className="onb-label">Confirmar senha</label><input id="onb3-confirmar" type="password" className="onb-input" value={data.confirmarSenha} onChange={(event) => update('confirmarSenha', event.target.value)} autoComplete="new-password" /></div></div>
+                  <div className="onb-form-row">
+                    <div className="onb-form-field onb-field-left">
+                      <div className="onb-label-row">
+                        <label htmlFor="onb3-senha" className="onb-label">Senha de acesso <span className="onb-req">*</span></label>
+                        <button
+                          type="button"
+                          className="onb-suggest-pwd-btn"
+                          onClick={handleGeneratePassword}
+                          title="Gera uma credencial de alta entropia"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <ShieldCheckIcon size={12} />
+                          <span>Gerar senha segura</span>
+                        </button>
+                      </div>
+                      <div className="onb-input-pwd-wrapper">
+                        <input
+                          id="onb3-senha"
+                          type={showPwd ? 'text' : 'password'}
+                          className="onb-input"
+                          value={data.senha}
+                          onChange={(event) => update('senha', event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="onb-pwd-toggle-btn"
+                          onClick={() => setShowPwd(!showPwd)}
+                          aria-label={showPwd ? 'Ocultar senha' : 'Exibir senha'}
+                        >
+                          {showPwd ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="onb-form-field onb-field-right">
+                      <div className="onb-label-row">
+                        <label htmlFor="onb3-confirmar" className="onb-label">Confirmar senha <span className="onb-req">*</span></label>
+                      </div>
+                      <div className="onb-input-pwd-wrapper">
+                        <input
+                          id="onb3-confirmar"
+                          type={showPwd ? 'text' : 'password'}
+                          className="onb-input"
+                          value={data.confirmarSenha}
+                          onChange={(event) => update('confirmarSenha', event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {pwdGeneratedNotice && (
+                    <div className="onb-pwd-notice" role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckIcon size={14} />
+                      <span>{pwdGeneratedNotice}</span>
+                    </div>
+                  )}
                 </div>
               </article>
 
               <article className="onb-form-card onb-review-card">
                 <div className="onb-card-header"><h3 className="onb-card-title">Tudo pronto</h3><span className="onb-card-hint">Revisão final</span></div>
                 <div className="onb-review-content">
-                  <div className="onb-review-icon" aria-hidden="true">✓</div>
+                  <div className="onb-review-icon" aria-hidden="true">
+                    <CheckIcon size={24} />
+                  </div>
                   <h4>Revise seus dados</h4>
                   <p>Ao concluir, sua empresa estará pronta para acessar o painel e iniciar os diários de rota.</p>
-                  <dl className="onb-review-list"><div><dt>Empresa</dt><dd>{empresa?.nomeFantasia || empresa?.nomeEmpresa || 'Dados da empresa'}</dd></div><div><dt>Região</dt><dd>{operationRegion}</dd></div><div><dt>Etapas</dt><dd>3 de 3 concluídas</dd></div></dl>
-                  <div className="onb-mobile-banner"><div className="onb-mobile-banner-text"><span className="onb-mobile-banner-title">Acesso seguro</span><span className="onb-mobile-banner-desc">Use seu e-mail e senha para entrar na plataforma.</span></div></div>
+                  <dl className="onb-review-list">
+                    <div><dt>Empresa</dt><dd>{empresa?.nomeFantasia || empresa?.nomeEmpresa || 'Dados da empresa'}</dd></div>
+                    <div><dt>Pecuarista (Origem)</dt><dd>{reviewSummary.pecuaristaInfo}</dd></div>
+                    <div><dt>Fazenda (Origem)</dt><dd>{reviewSummary.fazendaInfo}</dd></div>
+                    <div><dt>Frigorífico (Destino)</dt><dd>{reviewSummary.frigInfo}</dd></div>
+                    <div><dt>Equipe Técnica</dt><dd>{reviewSummary.equipeInfo}</dd></div>
+                    <div><dt>Motorista</dt><dd>{reviewSummary.motoristaInfo}</dd></div>
+                    <div><dt>Frota</dt><dd>{reviewSummary.frotaInfo}</dd></div>
+                    <div><dt>Trânsito Máximo</dt><dd>{reviewSummary.tempoMax}</dd></div>
+                  </dl>
+                  <div className="onb-mobile-banner">
+                    <RouteActiveIcon size={22} className="onb-mobile-banner-icon" />
+                    <div className="onb-mobile-banner-text">
+                      <span className="onb-mobile-banner-title">Acesso seguro</span>
+                      <span className="onb-mobile-banner-desc">Use seu e-mail e senha para entrar na plataforma.</span>
+                    </div>
+                  </div>
                 </div>
               </article>
 
-              <div className="onb-step2-actions-bar"><button type="button" className="onb-btn-back" onClick={() => navigate('/onboarding/etapa-2')}>← Voltar</button><button type="submit" className="onb-btn-forward" disabled={isSaving}>{isSaving ? 'Concluindo...' : <>Concluir configuração <span aria-hidden="true">→</span></>}</button></div>
+              <div className="onb-step2-actions-bar">
+                <button
+                  type="button"
+                  className="onb-btn-back"
+                  onClick={() => navigate('/onboarding/etapa-2')}
+                >
+                  <ArrowLeftIcon size={14} className="onb-btn-icon-prefix" />
+                  <span>Voltar</span>
+                </button>
+                <button
+                  type="submit"
+                  className="onb-btn-forward"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    'Concluindo...'
+                  ) : (
+                    <>
+                      <span>Concluir configuração</span>
+                      <ArrowRightIcon size={14} className="onb-btn-icon-suffix" />
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </main>

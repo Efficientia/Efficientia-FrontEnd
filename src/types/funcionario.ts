@@ -7,11 +7,26 @@ export interface CriarFuncionarioEmpresaRequest {
   dataNascimento?: string | null;
   email: string;
   telefone: string;
-  senha: string;
+  senha?: string | null;
   cargo?: string | null;
   cnhNumero?: string | null;
   categoriaCnh?: string | null;
   dataVencimentoCnh?: string | null;
+  localVinculado?: string | null;
+}
+
+export interface AtualizarFuncionarioEmpresaRequest {
+  nome?: string;
+  email?: string;
+  cpf?: string;
+  telefone?: string;
+  cargo?: string | null;
+  tipo?: TipoUsuario;
+  cnhNumero?: string | null;
+  categoriaCnh?: string | null;
+  dataVencimentoCnh?: string | null;
+  localVinculado?: string | null;
+  ativo?: boolean | null;
 }
 
 export interface FuncionarioEmpresaResponse {
@@ -26,4 +41,9 @@ export interface FuncionarioEmpresaResponse {
   cargo: string | null;
   ativo: boolean | null;
   criadoEm: string | null;
+  localVinculado?: string | null;
+  cnhNumero?: string | null;
+  categoriaCnh?: string | null;
+  dataVencimentoCnh?: string | null;
+  isCurrentUser?: boolean;
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import {
   authService,
+  empresaService,
   clearStoredAuthSession,
   getStoredAuthSession,
   writeStoredAuthSession,
@@ -194,10 +195,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.loginUsuario(dados);
       const roles = [normalizeRole(response.usuario.tipo)];
+      let empresaCarregada: EmpresaResponse | null = null;
+      if (dados.codigoEmpresa) {
+        try {
+          empresaCarregada = await empresaService.buscarPorCodigo(dados.codigoEmpresa);
+        } catch {
+          // fallback silencioso
+        }
+      }
       persistSession({
         token: response.token,
         user: response.usuario,
-        empresa: null,
+        empresa: empresaCarregada,
         roles,
       });
       return roles;

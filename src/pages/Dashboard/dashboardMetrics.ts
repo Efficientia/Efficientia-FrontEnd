@@ -264,6 +264,7 @@ export interface AnalysisQueueItem {
   readonly code: string;
   readonly gta: string;
   readonly driver: string;
+  readonly plate?: string;
   readonly route: string;
   readonly status: string;
 }

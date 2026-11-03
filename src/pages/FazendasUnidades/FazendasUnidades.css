@@ -1,51 +1,1287 @@
-.locations-page{background:#f4f7fb}.locations-main{padding:32px 38px 48px;overflow:auto}.locations-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px}.locations-heading h2{margin:4px 0 6px;color:#09264d;font-size:clamp(1.55rem,2.4vw,2rem);letter-spacing:-.03em}.locations-heading p:not(.dashboard-eyebrow){margin:0;color:#526886;font-size:.92rem}.locations-refresh{height:42px;padding:0 18px;border:1px solid #d5e0ee;border-radius:9px;background:#fff;color:#0f51ae;font-weight:700;cursor:pointer}.locations-refresh:disabled{opacity:.6;cursor:wait}.locations-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid #dce5f1}.locations-tabs button{padding:11px 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:#526886;font-weight:700;cursor:pointer}.locations-tabs button.active{border-bottom-color:#0f51ae;color:#0f51ae}.locations-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.location-card{display:flex;gap:14px;min-height:150px;padding:20px;border:1px solid #dee7f3;border-radius:14px;background:#fdfeff;box-shadow:0 4px 14px rgba(9,38,77,.06)}.location-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#eaf2ff;color:#0f51ae}.location-icon svg{width:21px;height:21px}.location-card-content{min-width:0;flex:1}.location-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.location-type{color:#168a46;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}.location-status{padding:4px 8px;border-radius:999px;background:#e4f8e9;color:#168a46;font-size:.68rem;font-weight:800}.location-status.inactive{background:#ffe8e8;color:#bd3131}.location-card h3{margin:16px 0 6px;color:#09264d;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.location-card p{margin:0;color:#526886;font-size:.82rem}.location-card small{display:block;margin-top:16px;color:#7889a3;font-size:.7rem}@media(max-width:900px){.locations-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.locations-main{padding:24px 18px}.locations-heading{flex-direction:column}.locations-refresh{width:100%}.locations-tabs{overflow:auto}.locations-tabs button{white-space:nowrap}.locations-grid{grid-template-columns:1fr}}
-/* Dark Mode para Fazendas e Unidades */
-html[data-theme='dark'] .locations-page {
-  background: var(--eff-dark-bg);
-  color: var(--eff-dark-text);
+/* ==========================================================================
+   FAZENDAS E UNIDADES FRIGORÍFICAS - EFFICIENTIA ENTERPRISE STYLES
+   Gestao e controle de fazendas parceiras e unidades frigorificas corporativas
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   ESTRUTURA GERAL DA PÁGINA
+   -------------------------------------------------------------------------- */
+.polos-page-shell {
+  padding: 8px 0 32px 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1220px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-html[data-theme='dark'] .locations-heading h2 {
-  color: var(--eff-dark-text);
+/* Botão principal do Header (topo direito) */
+.polo-novo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  background: var(--eff-green-accent, #13974b);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
 }
 
-html[data-theme='dark'] .locations-heading p:not(.dashboard-eyebrow) {
-  color: var(--eff-dark-text-secondary);
+.polo-novo-btn:hover {
+  background: #0f7a3c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(19, 151, 75, 0.25);
 }
 
-html[data-theme='dark'] .locations-refresh {
-  background: var(--eff-dark-surface);
-  border-color: var(--eff-dark-border);
-  color: var(--eff-dark-blue);
+.polo-novo-btn:active {
+  transform: translateY(0);
 }
 
-html[data-theme='dark'] .locations-tabs {
-  border-bottom-color: var(--eff-dark-border);
+/* --------------------------------------------------------------------------
+   SELETOR DE ABAS PRINCIPAIS: FAZENDAS vs UNIDADES FRIGORÍFICAS
+   -------------------------------------------------------------------------- */
+.polos-primary-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 2px solid var(--eff-border, #d5e0ee);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  overflow-x: auto;
 }
 
-html[data-theme='dark'] .locations-tabs button {
-  color: var(--eff-dark-text-secondary);
+.polos-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--eff-text-secondary, #526886);
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+  bottom: -2px;
 }
 
-html[data-theme='dark'] .locations-tabs button.active {
-  color: var(--eff-dark-blue);
-  border-bottom-color: var(--eff-dark-blue);
+.polos-tab-btn:hover {
+  color: var(--eff-primary, #0f51ae);
+  background: var(--eff-hover-bg, rgba(15, 81, 174, 0.04));
+  border-radius: 8px 8px 0 0;
 }
 
-html[data-theme='dark'] .location-card {
-  background: var(--eff-dark-surface);
-  border-color: var(--eff-dark-border);
-  color: var(--eff-dark-text);
+.polos-tab-btn.active {
+  color: var(--eff-primary, #0f51ae);
+  border-bottom-color: var(--eff-primary, #0f51ae);
+  font-weight: 700;
+  background: transparent;
 }
 
-html[data-theme='dark'] .location-card h3 {
-  color: var(--eff-dark-text);
+.polos-tab-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+  transition: all 0.2s ease;
 }
 
-html[data-theme='dark'] .location-card p {
-  color: var(--eff-dark-text-secondary);
+.polos-tab-btn.active .polos-tab-counter {
+  background: #eff6ff;
+  color: #0f51ae;
+  border: 1px solid #bfdbfe;
 }
 
-html[data-theme='dark'] .location-card span {
-  color: var(--eff-dark-text-secondary);
+/* Container do conteúdo da aba ativa */
+.polos-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   KPIS OPERACIONAIS (4 COLUNAS)
+   -------------------------------------------------------------------------- */
+.polos-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.polo-kpi-card {
+  min-height: 96px;
+  padding: 18px 20px;
+  border: 1px solid var(--eff-border, #dee7f3);
+  border-radius: 14px;
+  background: var(--eff-surface, #ffffff);
+  box-shadow: 0 2px 8px rgba(9, 38, 77, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.polo-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(9, 38, 77, 0.08);
+}
+
+.polo-kpi-card .kpi-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--eff-text-secondary, #526886);
+}
+
+.polo-kpi-card .kpi-number {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--eff-text-primary, #09264d);
+  line-height: 1.15;
+  margin: 6px 0 4px 0;
+}
+
+.polo-kpi-card .kpi-detail {
+  font-size: 0.78rem;
+  color: var(--eff-text-secondary, #64748b);
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   BARRA DE PESQUISA, FILTROS E AÇÃO DIRETA
+   -------------------------------------------------------------------------- */
+.polos-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--eff-surface, #ffffff);
+  border: 1px solid var(--eff-border, #dee7f3);
+  padding: 14px 18px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(9, 38, 77, 0.03);
+  flex-wrap: wrap;
+}
+
+.polos-search-wrap {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--eff-surface-subtle, #f8fafc);
+  border: 1px solid var(--eff-border, #d5e0ee);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 40px;
+  color: var(--eff-text-secondary, #64748b);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.polos-search-wrap:focus-within {
+  border-color: var(--eff-primary, #0f51ae);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(15, 81, 174, 0.12);
+}
+
+.polos-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.88rem;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.polos-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.polos-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.polos-status-wrap label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--eff-text-secondary, #526886);
+}
+
+.polos-status-wrap select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--eff-border, #dee7f3);
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-primary, #09264d);
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.polos-status-wrap select:focus {
+  border-color: var(--eff-primary, #0f51ae);
+}
+
+.polos-action-btn-green {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--eff-green-accent, #13974b);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.polos-action-btn-green:hover {
+  background: #0f7a3c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(19, 151, 75, 0.22);
+}
+
+/* --------------------------------------------------------------------------
+   TABELAS E CARDS DE LISTAGEM
+   -------------------------------------------------------------------------- */
+.polos-table-card {
+  background: var(--eff-surface, #ffffff);
+  border: 1px solid var(--eff-border, #dee7f3);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(9, 38, 77, 0.04);
+  overflow-x: auto;
+}
+
+.polos-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.polos-table thead th {
+  padding: 14px 16px;
+  background: #f4f7fc;
+  color: var(--eff-text-primary, #09264d);
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-bottom: 2px solid var(--eff-border, #dee7f3);
+  white-space: nowrap;
+}
+
+.polos-table tbody tr {
+  border-bottom: 1px solid var(--eff-border-subtle, #f0f4f9);
+  transition: background-color 0.15s ease;
+}
+
+.polos-table tbody tr:hover {
+  background-color: var(--eff-hover-bg, #f8fafc);
+}
+
+.polos-table tbody td {
+  padding: 14px 16px;
+  font-size: 0.84rem;
+  color: var(--eff-text-secondary, #526886);
+  vertical-align: middle;
+}
+
+/* Célula de identificação (Fazenda ou Frigorífico) */
+.polo-ident-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.polo-name {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.polo-subinfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.76rem;
+  color: var(--eff-text-secondary, #64748b);
+}
+
+.cnpj-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+/* Célula do Pecuarista Responsável (Fazenda) */
+.colab-link-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.colab-link-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.colab-avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  flex-shrink: 0;
+}
+
+.colab-name {
+  font-weight: 700;
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.86rem;
+  display: block;
+}
+
+.colab-id-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #0f51ae;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0 5px;
+  border-radius: 4px;
+  margin-top: 1px;
+}
+
+.colab-phone {
+  font-size: 0.76rem;
+  color: var(--eff-text-secondary, #64748b);
+  padding-left: 36px;
+}
+
+/* Célula da Equipe Vinculada ao Frigorífico (Analista, Curraleiro, Manobrista) */
+.frigo-team-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.team-role-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.team-role-row strong {
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.82rem;
+}
+
+.role-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.role-chip.analista {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.role-chip.curraleiro {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.role-chip.manobrista {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+
+/* Badge do SIF */
+.sif-pill-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #eff6ff;
+  color: #0f51ae;
+  border: 1.5px solid #93c5fd;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* Célula de Localização */
+.polo-location-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.polo-location-cell .city-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.85rem;
+}
+
+.polo-location-cell .city-state strong {
+  font-weight: 700;
+}
+
+.polo-location-cell .city-state svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.polo-address {
+  font-size: 0.74rem;
+  color: var(--eff-text-secondary, #64748b);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 18px;
+}
+
+/* Célula de Capacidade */
+.polo-capacity-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.polo-capacity-cell strong {
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.polo-capacity-cell small {
+  font-size: 0.72rem;
+  color: var(--eff-text-secondary, #64748b);
+}
+
+.polo-no-capacity {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+/* Status Pill */
+.polo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.polo-status-pill.active {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.polo-status-pill.inactive {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+/* Botões de Ação na Tabela */
+.polo-actions-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.action-btn.edit {
+  background: var(--eff-surface, #ffffff);
+  border-color: var(--eff-border, #d5e0ee);
+  color: var(--eff-primary, #0f51ae);
+}
+
+.action-btn.edit:hover {
+  background: var(--eff-hover-bg, #f0f6ff);
+  border-color: var(--eff-primary, #0f51ae);
+}
+
+.action-btn.toggle {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.action-btn.toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.action-btn.delete {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  padding: 0 8px;
+}
+
+.action-btn.delete:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+/* Empty State */
+.polos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: var(--eff-surface, #ffffff);
+  border: 1px dashed var(--eff-border, #cbd5e1);
+  border-radius: 14px;
+  text-align: center;
+  gap: 12px;
+}
+
+.polos-empty-state svg {
+  color: #94a3b8;
+}
+
+.polos-empty-state h3 {
+  margin: 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.15rem;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.polos-empty-state p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--eff-text-secondary, #64748b);
+  max-width: 440px;
+}
+
+/* --------------------------------------------------------------------------
+   MODAIS E FORMULÁRIOS (FAZENDAS & FRIGORÍFICOS)
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 38, 77, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.modal-window {
+  background: var(--eff-surface, #ffffff);
+  border: 1px solid var(--eff-border, #d5e0ee);
+  border-radius: 16px;
+  width: 100%;
+  box-shadow: 0 16px 36px rgba(9, 38, 77, 0.16);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-window-large {
+  max-width: 780px;
+}
+
+.modal-window-small {
+  max-width: 480px;
+}
+
+/* Submodal (Novo Pecuarista) com z-index superior */
+.submodal-backdrop {
+  z-index: 1100;
+  background: rgba(9, 38, 77, 0.6);
+}
+
+.submodal-window {
+  max-width: 540px;
+  border: 2px solid var(--eff-primary, #0f51ae);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid var(--eff-border, #dee7f3);
+  background: var(--eff-surface, #ffffff);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.25rem;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.modal-header p {
+  margin: 4px 0 0 0;
+  font-size: 0.8rem;
+  color: var(--eff-text-secondary, #64748b);
+}
+
+.modal-header code {
+  font-size: 0.76rem;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #0f51ae;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #09264d;
+}
+
+/* Alertas nos Modais */
+.modal-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  margin: 16px 24px 0 24px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.modal-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.modal-alert-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+/* Formulário do Modal */
+.modal-form {
+  padding: 20px 24px 24px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.form-group input,
+.form-group select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--eff-border, #d5e0ee);
+  border-radius: 8px;
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-primary, #09264d);
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--eff-primary, #0f51ae);
+  box-shadow: 0 0 0 3px rgba(15, 81, 174, 0.12);
+}
+
+.form-group input::placeholder {
+  color: #94a3b8;
+}
+
+.field-hint {
+  font-size: 0.74rem;
+  color: var(--eff-text-secondary, #64748b);
+  margin-top: 2px;
+}
+
+/* Campo do Pecuarista com botão Novo Pecuarista inline */
+.pecuarista-select-group {
+  background: #f8fafc;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.pecuarista-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.pecuarista-field-header label {
+  margin: 0;
+}
+
+.novo-pecuarista-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.novo-pecuarista-inline-btn:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  transform: translateY(-1px);
+}
+
+/* Box da Equipe Técnica no formulário do Frigorífico */
+.form-team-links-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--eff-primary, #0f51ae);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-links-title {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--eff-text-primary, #09264d);
+}
+
+/* Checkbox Row */
+.form-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.form-checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--eff-primary, #0f51ae);
+  cursor: pointer;
+}
+
+.form-checkbox-row label {
+  font-size: 0.84rem;
+  color: var(--eff-text-primary, #09264d);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Rodapé dos Modais (Ações) */
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--eff-border, #dee7f3);
+}
+
+.btn-cancel {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--eff-border, #d5e0ee);
+  border-radius: 8px;
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-secondary, #526886);
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-cancel:hover {
+  background: #f1f5f9;
+  color: #09264d;
+}
+
+.btn-save {
+  height: 38px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--eff-green-accent, #13974b);
+  color: #ffffff;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-save:hover {
+  background: #0f7a3c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(19, 151, 75, 0.25);
+}
+
+.btn-delete-confirm {
+  height: 38px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.delete-warning-text {
+  padding: 16px 24px;
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--eff-text-secondary, #526886);
+  line-height: 1.5;
+}
+
+.delete-warning-text strong {
+  color: var(--eff-text-primary, #09264d);
+}
+
+/* --------------------------------------------------------------------------
+   DARK THEME (data-theme="dark")
+   -------------------------------------------------------------------------- */
+html[data-theme='dark'] .polos-tab-btn {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .polos-tab-btn:hover {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+}
+
+html[data-theme='dark'] .polos-tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+html[data-theme='dark'] .polos-tab-counter {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .polos-tab-btn.active .polos-tab-counter {
+  background: #1e3a8a;
+  color: #93c5fd;
+  border-color: #3b82f6;
+}
+
+html[data-theme='dark'] .polo-kpi-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .polo-kpi-card:hover {
+  border-color: #475569;
+}
+
+html[data-theme='dark'] .polo-kpi-card .kpi-number {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .polo-kpi-card .kpi-label,
+html[data-theme='dark'] .polo-kpi-card .kpi-detail {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .polos-toolbar,
+html[data-theme='dark'] .polos-table-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .polos-search-wrap {
+  background: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .polos-search-input {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .polos-status-wrap select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .polos-table thead th {
+  background: #0f172a;
+  color: #cbd5e1;
+  border-bottom-color: #334155;
+}
+
+html[data-theme='dark'] .polos-table tbody tr {
+  border-bottom-color: #334155;
+}
+
+html[data-theme='dark'] .polos-table tbody tr:hover {
+  background-color: #273549;
+}
+
+html[data-theme='dark'] .polo-name,
+html[data-theme='dark'] .colab-name,
+html[data-theme='dark'] .team-role-row strong,
+html[data-theme='dark'] .polo-location-cell .city-state,
+html[data-theme='dark'] .polo-capacity-cell strong {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .cnpj-tag {
+  background: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .colab-avatar-mini {
+  background: #064e3b;
+  border-color: #059669;
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .colab-id-pill {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .sif-pill-badge {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .action-btn.edit {
+  background: #0f172a;
+  border-color: #334155;
+  color: #60a5fa;
+}
+
+html[data-theme='dark'] .action-btn.edit:hover {
+  background: #1e293b;
+  border-color: #60a5fa;
+}
+
+html[data-theme='dark'] .action-btn.toggle {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .action-btn.toggle:hover {
+  background: #1e293b;
+}
+
+html[data-theme='dark'] .action-btn.delete {
+  background: #450a0a;
+  border-color: #7f1d1d;
+  color: #f87171;
+}
+
+html[data-theme='dark'] .action-btn.delete:hover {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .polos-empty-state {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .polos-empty-state h3 {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .modal-window {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .modal-header {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+html[data-theme='dark'] .modal-header h3 {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .modal-header p {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .modal-header code {
+  background: #0f172a;
+  color: #60a5fa;
+}
+
+html[data-theme='dark'] .modal-close-btn:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .form-group label {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .form-group input,
+html[data-theme='dark'] .form-group select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .pecuarista-select-group,
+html[data-theme='dark'] .form-team-links-box {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .team-links-title {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .novo-pecuarista-inline-btn {
+  background: #064e3b;
+  color: #6ee7b7;
+  border-color: #059669;
+}
+
+html[data-theme='dark'] .form-checkbox-row label {
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .modal-footer-actions {
+  border-top-color: #334155;
+}
+
+html[data-theme='dark'] .btn-cancel {
+  background: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .btn-cancel:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .delete-warning-text {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .delete-warning-text strong {
+  color: #f1f5f9;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVIDADE (TABLETS E CELULARES)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .polos-kpis-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .polos-primary-tabs {
+    flex-direction: column;
+    border-bottom: none;
+  }
+
+  .polos-tab-btn {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .polos-tab-btn.active {
+    border-left-color: var(--eff-primary, #0f51ae);
+    background: var(--eff-hover-bg, #eff6ff);
+  }
+
+  .polos-kpis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .polos-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .polos-search-wrap {
+    min-width: 100%;
+  }
+
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
 }

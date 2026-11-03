@@ -131,7 +131,7 @@ export function useAiChat(options: UseAiChatOptions = {}): UseAiChatReturn {
         const errorAssistantMsg: ChatMessage = {
           id: `msg_err_${Date.now()}`,
           sender: 'assistant',
-          text: `⚠️ Desculpe, não consegui processar sua solicitação no momento: ${errorMessage}`,
+          text: `Desculpe, não consegui processar sua solicitação no momento: ${errorMessage}`,
           timestamp: new Date().toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit',

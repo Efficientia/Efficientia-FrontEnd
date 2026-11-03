@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="916" height="790" viewBox="0 0 916 790" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Fundo / Forma org&#195;&#162;nica da refer&#195;&#170;ncia" clip-path="url(#clip0_0_607)">
+<path id="Vector" d="M22 240C58 145 130 72 252 88C363 108 380 64 477 30C633 -26 723 81 787 142C865 214 945 280 902 443C880 526 840 597 795 681C737 784 628 750 535 718C425 680 375 641 263 656C142 674 26 635 8 528C-8 437 -16 342 22 240Z" fill="url(#paint0_linear_0_607)"/>
+<path id="Vector_2" d="M10 622C-25 562 44 509 79 446M458 739C580 721 643 692 685 640M566 130C681 110 652 -38 796 15C847 33 878 65 916 88" stroke="#CDDEFF"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_607" x1="200" y1="6.32171e-07" x2="710" y2="790" gradientUnits="userSpaceOnUse">
+<stop stop-color="#F5FAFF"/>
+<stop offset="0.6" stop-color="#DEEEFF"/>
+<stop offset="1" stop-color="#E9F5FF"/>
+</linearGradient>
+<clipPath id="clip0_0_607">
+<rect width="916" height="790" fill="white"/>
+</clipPath>
+</defs>
+</svg>
