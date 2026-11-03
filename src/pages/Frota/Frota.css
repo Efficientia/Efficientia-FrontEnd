@@ -1,0 +1,1037 @@
+/* ==========================================================================
+   FROTA DE CAMINHÕES E GAIOLAS BOIADEIRAS - EFFICIENTIA STYLES
+   ========================================================================== */
+
+.fleet-main-container {
+  padding: 12px 0 32px 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.fleet-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1220px;
+  margin: 0 auto 20px;
+  flex-wrap: wrap;
+}
+
+.fleet-heading h2 {
+  margin: 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  color: var(--eff-text-primary, #09264d);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+.fleet-heading p {
+  color: var(--eff-text-secondary, #526886);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.fleet-novo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  background: var(--eff-green-accent, #13974b);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.fleet-novo-btn:hover {
+  background: #0f7a3c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(19, 151, 75, 0.25);
+}
+
+.fleet-refresh {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--eff-surface, #ffffff);
+  border: 1px solid var(--eff-border, #d5e0ee);
+  color: var(--eff-primary, #0f51ae);
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fleet-refresh:hover:not(:disabled) {
+  background: var(--eff-hover-bg, #f0f6ff);
+  border-color: var(--eff-primary, #0f51ae);
+}
+
+.fleet-refresh:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ==========================================================================
+   KPIS OPERACIONAIS (5 COLUNAS)
+   ========================================================================== */
+.fleet-kpis {
+  max-width: 1220px;
+  margin: 0 auto 20px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fleet-kpis article {
+  min-height: 96px;
+  padding: 16px 18px;
+  border: 1px solid var(--eff-border, #dee7f3);
+  border-radius: 14px;
+  background: var(--eff-surface, #ffffff);
+  box-shadow: 0 2px 8px rgba(9, 38, 77, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.fleet-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fleet-kpis span {
+  color: var(--eff-text-secondary, #526886);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fleet-kpi-icon {
+  color: #7889a3;
+}
+
+.fleet-kpi-icon.success {
+  color: #16a34a;
+}
+
+.fleet-kpi-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  box-shadow: 0 0 0 rgba(37, 99, 235, 0.4);
+  animation: fleetPulse 2s infinite;
+}
+
+@keyframes fleetPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.fleet-kpi-badge-accent {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #0f51ae;
+  background: #eaf2ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.fleet-kpis strong {
+  margin: 6px 0 2px 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  color: var(--eff-primary, #0f51ae);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.fleet-kpis strong.kpi-in-use {
+  color: #2563eb;
+}
+
+.fleet-kpis strong.kpi-available {
+  color: #16a34a;
+}
+
+.fleet-kpis strong.kpi-capacity {
+  color: #0f51ae;
+}
+
+.fleet-kpis strong.kpi-warning {
+  color: #d97706;
+}
+
+.fleet-kpis strong.kpi-valid {
+  color: #16a34a;
+}
+
+.fleet-kpis small {
+  font-size: 0.72rem;
+  color: var(--eff-text-muted, #7889a3);
+}
+
+/* ==========================================================================
+   BARRA DE FILTROS (TABS POR TIPO + STATUS)
+   ========================================================================== */
+.fleet-filter-bar {
+  max-width: 1220px;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.fleet-type-filters {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.fleet-type-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--eff-border, #dee7f3);
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-secondary, #526886);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.fleet-type-tab:hover {
+  background: var(--eff-hover-bg, #f8fafc);
+  border-color: #cbd5e1;
+}
+
+.fleet-type-tab.active {
+  background: #0f51ae;
+  border-color: #0f51ae;
+  color: #ffffff;
+}
+
+.fleet-type-count {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+}
+
+.fleet-type-tab.active .fleet-type-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.fleet-status-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fleet-status-filter-wrap label {
+  font-size: 0.8rem;
+  color: var(--eff-text-secondary, #526886);
+  font-weight: 600;
+}
+
+.fleet-status-select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--eff-border, #dee7f3);
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.fleet-status-select:focus {
+  border-color: #0f51ae;
+}
+
+/* ==========================================================================
+   TABELA DA FROTA
+   ========================================================================== */
+.fleet-table-wrap {
+  max-width: 1220px;
+  margin: 0 auto;
+  background: var(--eff-surface, #ffffff);
+  border: 1px solid var(--eff-border, #dee7f3);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(9, 38, 77, 0.04);
+  overflow: auto;
+}
+
+.fleet-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fleet-table th {
+  padding: 14px 16px;
+  background: #f4f7fc;
+  color: var(--eff-text-primary, #09264d);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: left;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  white-space: nowrap;
+}
+
+.fleet-table td {
+  padding: 13px 16px;
+  border-top: 1px solid var(--eff-border-subtle, #f0f4f9);
+  font-size: 0.83rem;
+  color: var(--eff-text-secondary, #526886);
+  vertical-align: middle;
+}
+
+.fleet-vehicle-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.plates-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vehicle-plate-pill {
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #09264d;
+  font-weight: 800;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-left: 4px solid #0f51ae;
+  padding: 1px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.trailer-plate-pill {
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.vehicle-details {
+  font-size: 0.74rem;
+  color: var(--eff-text-muted, #7889a3);
+}
+
+/* Badges de Tipo */
+.fleet-type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.type-conjunto {
+  background: #eaf2ff;
+  color: #0f51ae;
+  border: 1px solid #c7d9fc;
+}
+
+.type-cavalo {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.type-carreta {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+/* Capacidade */
+.fleet-capacity-text {
+  font-size: 0.85rem;
+  color: var(--eff-text-primary, #09264d);
+  font-weight: 700;
+}
+
+.fleet-cage-badge {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--eff-text-muted, #7889a3);
+  margin-top: 1px;
+}
+
+.fleet-no-capacity {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Status Operacional */
+.fleet-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.fleet-status-pill.status-available {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.fleet-status-pill.status-in-use {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.fleet-status-pill.status-maintenance {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.fleet-status-pill.status-inactive {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-dot.pulsing {
+  animation: dotPulse 1.5s infinite;
+}
+
+@keyframes dotPulse {
+  0% { transform: scale(0.9); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+  100% { transform: scale(0.9); opacity: 1; }
+}
+
+/* Motorista / Alocação */
+.fleet-driver-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fleet-driver-cell strong {
+  font-size: 0.82rem;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.fleet-driver-assigned {
+  font-size: 0.7rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.fleet-driver-unassigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.fleet-driver-cell small {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* Inspeção MAPA */
+.inspection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.inspection-pill.valid {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.inspection-pill.warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.inspection-pill.expired {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.inspection-pill.none {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+/* Odômetro */
+.fleet-km-text {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+/* Ações da Tabela */
+.fleet-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.fleet-action-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fleet-action-btn.edit {
+  color: #0f51ae;
+  border-color: #cbd5e1;
+}
+
+.fleet-action-btn.edit:hover {
+  background-color: rgba(15, 81, 174, 0.08);
+  border-color: #0f51ae;
+}
+
+.fleet-action-btn.toggle {
+  color: #475569;
+}
+
+.fleet-action-btn.toggle:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.fleet-action-btn.delete {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.fleet-action-btn.delete:hover {
+  background-color: #fee2e2;
+  border-color: #dc2626;
+}
+
+/* ==========================================================================
+   MODAIS (CADASTRO / EDIÇÃO / EXCLUSÃO)
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 38, 77, 0.5);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-window {
+  background: var(--eff-surface, #ffffff);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(9, 38, 77, 0.2);
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.modal-header h3 {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.25rem;
+  margin: 0 0 4px 0;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.modal-header p {
+  font-size: 0.82rem;
+  color: var(--eff-text-secondary, #526886);
+  margin: 0;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #7889a3;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+.modal-close-btn:hover {
+  background: #f0f4f9;
+  color: #09264d;
+}
+
+.modal-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.modal-alert-error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.modal-alert-success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.form-group input,
+.form-group select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--eff-border, #d5e0ee);
+  border-radius: 8px;
+  background: var(--eff-surface, #ffffff);
+  color: var(--eff-text-primary, #09264d);
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--eff-primary, #0f51ae);
+  box-shadow: 0 0 0 3px rgba(15, 81, 174, 0.12);
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row .flex-1 { flex: 1; }
+.form-row .flex-2 { flex: 2; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.modal-btn-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.modal-btn-cancel:hover {
+  background: #f1f5f9;
+}
+
+.modal-btn-submit {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: #0f51ae;
+  border: none;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modal-btn-submit:hover:not(:disabled) {
+  background: #0d428c;
+}
+
+.modal-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Modal de Confirmação de Exclusão */
+.delete-confirm-box {
+  padding: 6px 0;
+}
+
+.delete-confirm-text {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.delete-confirm-details {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delete-confirm-details strong {
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.delete-confirm-details span {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.modal-btn-delete {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background-color: #dc2626;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modal-btn-delete:hover {
+  background-color: #b91c1c;
+}
+
+/* ==========================================================================
+   RESPONSIVO
+   ========================================================================== */
+@media (max-width: 1080px) {
+  .fleet-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .fleet-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .fleet-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fleet-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   DARK MODE
+   ========================================================================== */
+html[data-theme='dark'] .fleet-heading h2 {
+  color: var(--eff-dark-text, #e2e8f0);
+}
+
+html[data-theme='dark'] .fleet-kpis article,
+html[data-theme='dark'] .fleet-table-wrap,
+html[data-theme='dark'] .fleet-type-tab,
+html[data-theme='dark'] .fleet-status-select,
+html[data-theme='dark'] .modal-window {
+  background: var(--eff-dark-surface, #14213d);
+  border-color: var(--eff-dark-border, #1f335b);
+}
+
+html[data-theme='dark'] .fleet-kpi-badge-accent {
+  background: #0c2144;
+  color: #38bdf8;
+}
+
+html[data-theme='dark'] .fleet-kpis strong {
+  color: var(--eff-dark-blue, #2b7fef);
+}
+
+html[data-theme='dark'] .fleet-kpis strong.kpi-in-use {
+  color: #60a5fa;
+}
+
+html[data-theme='dark'] .fleet-kpis strong.kpi-available {
+  color: #4ade80;
+}
+
+html[data-theme='dark'] .fleet-kpis strong.kpi-capacity {
+  color: #38bdf8;
+}
+
+html[data-theme='dark'] .fleet-kpis strong.kpi-warning {
+  color: #fbbf24;
+}
+
+html[data-theme='dark'] .fleet-refresh {
+  background: var(--eff-dark-surface, #14213d);
+  border-color: var(--eff-dark-border, #1f335b);
+  color: var(--eff-dark-blue, #2b7fef);
+}
+
+html[data-theme='dark'] .fleet-table th {
+  background: #0d172a;
+  color: var(--eff-dark-text, #e2e8f0);
+}
+
+html[data-theme='dark'] .fleet-table td {
+  border-top-color: var(--eff-dark-border, #1f335b);
+  color: var(--eff-dark-text-secondary, #8da0be);
+}
+
+html[data-theme='dark'] .vehicle-plate-pill {
+  background: #0b1e38;
+  border-color: #1e3a5f;
+  border-left-color: #38bdf8;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .trailer-plate-pill {
+  background: #071933;
+  border-color: #1d4ed8;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .fleet-capacity-text {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .type-conjunto {
+  background: #0c2144;
+  border-color: #1d4ed8;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .type-cavalo {
+  background: #3b2308;
+  border-color: #78350f;
+  color: #fde68a;
+}
+
+html[data-theme='dark'] .type-carreta {
+  background: #06371b;
+  border-color: #14532d;
+  color: #86efac;
+}
+
+html[data-theme='dark'] .fleet-status-pill.status-available {
+  background: #06371b;
+  color: #86efac;
+}
+
+html[data-theme='dark'] .fleet-status-pill.status-in-use {
+  background: #0c2144;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .fleet-status-pill.status-maintenance {
+  background: #3b2308;
+  color: #fde68a;
+}
+
+html[data-theme='dark'] .fleet-status-pill.status-inactive {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .fleet-driver-cell strong {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .fleet-driver-unassigned {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .inspection-pill.valid {
+  background: #06371b;
+  border-color: #14532d;
+  color: #86efac;
+}
+
+html[data-theme='dark'] .inspection-pill.warning {
+  background: #3b2308;
+  border-color: #78350f;
+  color: #fde68a;
+}
+
+html[data-theme='dark'] .inspection-pill.expired {
+  background: #3c0c0c;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .fleet-km-text {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .fleet-action-btn {
+  background-color: #0b1e38;
+  border-color: #1e3a5f;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .fleet-action-btn.edit {
+  color: #38bdf8;
+  border-color: #1e3a5f;
+}
+
+html[data-theme='dark'] .fleet-action-btn.edit:hover {
+  background-color: rgba(56, 189, 248, 0.12);
+  border-color: #38bdf8;
+}
+
+html[data-theme='dark'] .fleet-action-btn.delete {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+html[data-theme='dark'] .fleet-action-btn.delete:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
+html[data-theme='dark'] .modal-header h3 {
+  color: var(--eff-dark-text, #e2e8f0);
+}
+
+html[data-theme='dark'] .form-group label {
+  color: var(--eff-dark-text, #e2e8f0);
+}
+
+html[data-theme='dark'] .form-group input,
+html[data-theme='dark'] .form-group select {
+  background: #0b1e38;
+  border-color: #1e3a5f;
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .delete-confirm-details {
+  background: #0b1e38;
+  border-color: #1e3a5f;
+}
+
+html[data-theme='dark'] .delete-confirm-details strong {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .delete-confirm-text {
+  color: #cbd5e1;
+}

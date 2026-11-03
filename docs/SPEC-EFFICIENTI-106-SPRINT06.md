@@ -1,0 +1,88 @@
+# Especificação Técnica — Sprint EFFICIENTI-106
+
+## EFFICIENTI-334 — Estado de autenticação com Context API e reducer
+
+`AuthProvider` expõe a sessão por Context API e centraliza as transições em `authReducer`, com estado tipado para token, usuário, empresa, papéis e carregamento. Restauração, início/fim de requisição, autenticação concluída e logout são ações explícitas; os eventos `401` limpam a sessão pelo mesmo fluxo de logout.
+
+`useAuth` consome o contexto. Callbacks estáveis mantêm as ações previsíveis, e `useMemo` mantém o valor do provider estável enquanto o estado e as ações não mudam.
+
+Verificação reproduzível: `npm run build` e `npm run lint`.
+
+
+## EFFICIENTI-337 — Sessão versionada no localStorage
+
+`src/services/api/storage.ts` guarda o token em `@efficientia:v1:token` e o perfil versionado (`version: 1`, usuário, empresa e papéis) em `@efficientia:v1:profile`. `getStoredToken()` lê diretamente a chave do token, sem desserializar o perfil a cada requisição. A validação da sessão remove dados malformados; chaves antigas são eliminadas e nunca usadas como fallback.
+
+Somente `AuthContext` persiste sessões autenticadas. `authService` retorna os DTOs sem gravar credenciais como efeito colateral. `useCallback` mantém estáveis login/logout e `hasRole`; `useMemo` evita recriar o valor do Context quando estado e ações não mudam.
+
+Verificação reproduzível: `npm run build` e `npm run lint`. Smoke executado com Node 22 confirmou remoção das chaves legadas, round-trip da sessão v1 e limpeza de perfil JSON corrompido.
+
+## EFFICIENTI-338 — Formulários de autenticação e rotas protegidas
+
+`/login` usa os contratos atuais da API para autenticação de funcionário (CPF, e-mail, senha e código da empresa) e administrador (identificador, senha e código/CNPJ opcionais). Os métodos do Context retornam papéis após persistir a sessão; o redirecionamento ao painel usa a mesma lista central de papéis permitidos que `PrivateRoute`.
+
+Erros HTTP e erros por campo são exibidos como texto React escapado; nenhum conteúdo da API é interpretado como HTML. A página de teste permanece somente em desenvolvimento (`/dev/api-test`).
+
+Verificação reproduzível: `npm run build` e `npm run lint`.
+
+## EFFICIENTI-335 — Hook tipado de leitura cancelável
+
+`src/hooks/useFetchData.ts` executa uma consulta assíncrona tipada e retorna `data`, `error`, `isLoading`, `isSuccess`, `isError` e `refetch`. O erro mantém a classe `ApiRequestError`, incluindo status HTTP e erros por campo do Problem Detail da API.
+
+Cada identidade de `fetcher` e cada chamada de `refetch` inicia uma requisição com `AbortController`. A requisição anterior é cancelada quando o callback muda ou o componente desmonta; cancelamentos não aparecem como erros de interface. O callback deve ser memoizado com `useCallback` para evitar uma nova execução em cada renderização.
+
+```tsx
+const carregarRelatorios = useCallback(
+  (signal: AbortSignal) => relatorioService.listar(0, 20, signal),
+  []
+);
+const { data, error, isLoading, refetch } = useFetchData(carregarRelatorios);
+```
+
+A tela deve representar `isLoading` e `error` explicitamente; `refetch` repete a leitura com um novo sinal de cancelamento. Os serviços de relatórios, documentos, frota, cadastros e empresas aceitam `AbortSignal` nas consultas de leitura.
+
+Verificação reproduzível: `npm run build` e `npm run lint`.
+
+## EFFICIENTI-336 — Carregamento sob demanda das rotas
+
+As páginas públicas, privadas e 404 são carregadas com `React.lazy`; `Suspense` apresenta um `<main aria-busy>` e mensagem `role="status"` enquanto o módulo chega. A tela `/dev/api-test` só cria o import lazy em desenvolvimento e não é emitida no bundle de produção.
+
+Verificação reproduzível: `npm run build` e `npm run lint`; o build de produção gerou chunks por página e não incluiu chunk de `ApiTestWorkbench`.
+
+## EFFICIENTI-339 — Teclado, foco e landmarks
+
+O link “Pular para o conteúdo principal” é o primeiro controle da aplicação e leva a `main#main-content`. Todas as páginas, o fallback lazy e o estado de carregamento protegido expõem esse landmark com foco programático. `RouteFocusManager` move o foco ao conteúdo após navegação; `PrivateRoute` refaz o foco quando termina de restaurar uma sessão privada.
+
+O formulário de login agrupa métodos com `fieldset`/`legend`, rotula os campos e mostra foco visível.
+
+Verificação: `npm run build`, `npm run lint` e smoke SSR da tela de login confirmando landmark, campos de funcionário/administrador e renderização segura de texto.
+
+## EFFICIENTI-394 — Dashboard com relatórios paginados
+
+`/dashboard` consome `relatorioService.listar(pagina, 20, signal)` via `useFetchData`. A tabela usa os campos reais do DTO (GTA, nota fiscal, embarque, status, motoristaId e fazendaId); total, paginação, carregamento, erro com repetição e resultado vazio refletem a resposta da API. Não há KPIs nem dados de demonstração: o backend atual não expõe agregados de dashboard.
+
+Verificação: `npm run build`, `npm run lint` e smoke SSR com respostas de página, lista vazia e erro/repetição.
+
+## EFFICIENTI-395 — Filtros com useReducer
+
+`reportFiltersReducer` controla busca textual e status sem mutação; `filterReports` compara GTA, nota fiscal, embarque, status e IDs. `useMemo` recalcula resultados somente quando a página ou os filtros mudam. Como o contrato atual da API só aceita `pagina` e `tamanho`, os filtros são explicitamente locais à página carregada e não enviam parâmetros não suportados.
+
+Verificação: `npm run build`, `npm run lint` e smoke Node cobrindo busca sem diferenciar maiúsculas, filtro exato de status, combinação dos filtros e reset.
+
+## EFFICIENTI-330 — Semântica de estado e feedback
+
+As páginas de erro e de carregamento usam landmarks `main`; estados transitórios anunciam carregamento com `role="status"`, e falhas de requisição são apresentadas como alertas acessíveis.
+
+Verificação: `npm run build` e `npm run lint`.
+
+## EFFICIENTI-390 — Workbench de testes da API
+
+A tela de desenvolvimento consulta `GET /api/v1/status` e oferece um login operacional real pela API configurada, além de exibir a URL-base ativa. Ela não mostra o token nem usa um endpoint simulado; pode ser substituída sem alterar os serviços de produção.
+
+Verificação: smoke SSR confirmou renderização das áreas de status, login e validação.
+
+## EFFICIENTI-391 — Validação de CPF e placa
+
+`isValidCpfFormat` exige 11 dígitos e aceita pontuação de apresentação; `isValidBrazilianLicensePlate` aceita os formatos brasileiros antigo e Mercosul. O workbench comunica entradas inválidas por texto associado aos controles e região de status.
+
+Verificação: smoke Node executado com sete entradas válidas/inválidas de CPF e placa.
