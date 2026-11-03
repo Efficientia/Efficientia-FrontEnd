@@ -33,6 +33,7 @@ jira.env
 references_front/
 *.png
 !src/**/*.png
+!public/**/*.png
 API-Map.md
 API-spec.md
 
