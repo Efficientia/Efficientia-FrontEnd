@@ -1,0 +1,462 @@
+/* ==========================================================================
+   TELA DE CADASTRO — EFFICIENTIA
+   Design System: Split-Screen formulário (50%) e hero à direita (50%)
+   Fundo escuro corporativo idêntico ao de Login e com inputs e botões idênticos
+   ========================================================================== */
+
+.cadastro-container {
+  display: flex;
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #07172C;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   LADO ESQUERDO: PAINEL DO FORMULÁRIO (50% BALANCEADO)
+   ========================================================================== */
+
+.cadastro-form-section {
+  flex: 1 1 50%;
+  width: 50%;
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #0B2240 0%, #061528 50%, #0B2240 100%);
+  padding: 2.5rem 3rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Card Interno do Formulário */
+.cadastro-card {
+  width: 100%;
+  max-width: 440px;
+  margin: auto 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.cadastro-header {
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.cadastro-title {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: clamp(26px, 2.2vw, 34px);
+  font-weight: 800;
+  color: #FFFFFF;
+  text-align: center;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.cadastro-subtitle {
+  color: #C2D6F5;
+  font-size: 13.5px;
+  line-height: 1.45;
+  text-align: center;
+  margin: 0 auto;
+  max-width: 390px;
+}
+
+/* Formulário e Grupos de Entrada */
+.cadastro-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.cadastro-input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.cadastro-label {
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.cadastro-required {
+  color: #EF4444;
+  font-weight: 700;
+  margin-left: 0.15rem;
+}
+
+.cadastro-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.cadastro-input {
+  width: 100%;
+  height: 52px;
+  border-radius: 10px;
+  background-color: #0E2545;
+  border: 1.5px solid #1F3E68;
+  color: #FFFFFF;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.cadastro-input::placeholder {
+  color: #6C8BB5;
+  opacity: 0.8;
+}
+
+.cadastro-input:focus {
+  border-color: #56D867;
+  box-shadow: 0 0 0 3px rgba(86, 216, 103, 0.3);
+  background-color: #0F284B;
+}
+
+.cadastro-input.has-error {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.cadastro-code-input {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 700;
+  font-family: monospace;
+  font-size: 16px;
+}
+
+.cadastro-field-error {
+  font-size: 12px;
+  color: #FCA5A5;
+  margin-top: 0.35rem;
+  line-height: 1.3;
+}
+
+/* Box Explicativo com o Código Gerado (Fase 2) */
+.cadastro-code-box {
+  background: rgba(14, 37, 69, 0.85);
+  border: 1.5px solid #1F3E68;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cadastro-code-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #93C5FD;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cadastro-code-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cadastro-code-label {
+  color: #FFFFFF;
+  font-size: 0.875rem;
+}
+
+.cadastro-code-value {
+  font-size: 1.3rem;
+  color: #56D867;
+  letter-spacing: 2px;
+  font-family: monospace;
+  font-weight: 800;
+}
+
+.cadastro-code-hint {
+  font-size: 0.76rem;
+  color: #CBD5E1;
+  line-height: 1.35;
+}
+
+/* Botão de Ação Primária */
+.cadastro-submit-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 28px;
+  background-color: #56D867;
+  color: #09264D;
+  border: none;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 1.15rem auto 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(86, 216, 103, 0.35);
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cadastro-submit-btn:hover:not(:disabled) {
+  background-color: #48CE5B;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(86, 216, 103, 0.45);
+}
+
+.cadastro-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.cadastro-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Botão Voltar (Fase 2) */
+.cadastro-back-btn {
+  background: transparent;
+  border: none;
+  color: #93C5FD;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.cadastro-back-btn:hover {
+  color: #56D867;
+}
+
+/* Rodapé: Já possui uma conta? Fazer login */
+.cadastro-switch-box {
+  margin-top: 1.25rem;
+  text-align: center;
+  width: 100%;
+}
+
+.cadastro-switch-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.cadastro-switch-link {
+  color: #56D867;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: #56D867;
+  text-underline-offset: 3px;
+  transition: opacity 0.2s;
+}
+
+.cadastro-switch-link:hover {
+  opacity: 0.85;
+}
+
+/* Feedbacks e Alertas Padronizados e Profissionais */
+.cadastro-feedback {
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  margin: 1.1rem 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cadastro-feedback p {
+  margin: 0;
+}
+
+.cadastro-feedback-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cadastro-feedback-body {
+  flex: 1;
+}
+
+.cadastro-feedback-error {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-left: 4px solid #EF4444;
+  color: #FEE2E2;
+}
+
+.cadastro-feedback-error .cadastro-feedback-icon {
+  color: #F87171;
+}
+
+.cadastro-feedback-error p {
+  color: #FEE2E2;
+  font-weight: 500;
+}
+
+.cadastro-feedback-error ul {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+  color: #FECACA;
+  font-size: 12.5px;
+}
+
+.cadastro-feedback-notice {
+  background-color: rgba(86, 216, 103, 0.14);
+  border: 1px solid rgba(86, 216, 103, 0.4);
+  border-left: 4px solid #56D867;
+  color: #E8F8EC;
+}
+
+.cadastro-feedback-notice .cadastro-feedback-icon {
+  color: #56D867;
+}
+
+.cadastro-feedback-notice p {
+  color: #E8F8EC;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   LADO DIREITO: HERO SECTION (50% FLUSH)
+   ========================================================================== */
+
+.cadastro-hero-section {
+  flex: 1 1 50%;
+  width: 50%;
+  height: 100vh;
+  max-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: #07172C;
+  display: flex;
+}
+
+.cadastro-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.cadastro-hero-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(7, 23, 44, 0.4) 0%,
+    rgba(11, 34, 64, 0.2) 100%
+  );
+  z-index: 1;
+}
+
+/* ==========================================================================
+   DARK MODE
+   ========================================================================== */
+
+html[data-theme='dark'] .cadastro-container,
+[data-theme='dark'] .cadastro-container {
+  background-color: #07172C;
+}
+
+html[data-theme='dark'] .cadastro-form-section,
+[data-theme='dark'] .cadastro-form-section {
+  background: linear-gradient(180deg, #0B2240 0%, #061528 50%, #0B2240 100%);
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (TABLET & MOBILE)
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .cadastro-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .cadastro-hero-section {
+    display: none;
+  }
+
+  .cadastro-form-section {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 100vh;
+    padding: 2.5rem 1.5rem;
+    justify-content: center;
+  }
+
+  .cadastro-card {
+    max-width: 440px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .cadastro-form-section {
+    padding: 2rem 1.25rem;
+  }
+
+  .cadastro-card {
+    max-width: 100%;
+  }
+
+  .cadastro-title {
+    font-size: 24px;
+    margin-bottom: 0.5rem;
+  }
+
+  .cadastro-input {
+    height: 48px;
+    font-size: 14px;
+    padding: 0 1rem;
+  }
+
+  .cadastro-submit-btn {
+    height: 50px;
+    font-size: 15.5px;
+  }
+}

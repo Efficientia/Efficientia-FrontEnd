@@ -1,0 +1,408 @@
+/* ==========================================================================
+   TELA DE LOGIN — EFFICIENTIA
+   Design System: Split-Screen formulário (50%) e hero à direita (50%)
+   Fundo escuro corporativo e overlay idênticos ao de Cadastro
+   ========================================================================== */
+
+.login-container {
+  display: flex;
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #07172C;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   LADO ESQUERDO: PAINEL DO FORMULÁRIO (50% BALANCEADO)
+   ========================================================================== */
+
+.login-form-section {
+  flex: 1 1 50%;
+  width: 50%;
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #0B2240 0%, #061528 50%, #0B2240 100%);
+  padding: 2.5rem 3rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Card Interno do Formulário */
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  margin: auto 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.login-title {
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: clamp(28px, 2.3vw, 36px);
+  font-weight: 800;
+  color: #FFFFFF;
+  text-align: center;
+  margin: 0 0 1.75rem 0;
+  letter-spacing: -0.5px;
+}
+
+/* Formulário e Grupos de Entrada */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.login-input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.15rem;
+  width: 100%;
+}
+
+.login-label {
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.login-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.login-input {
+  width: 100%;
+  height: 52px;
+  border-radius: 10px;
+  background-color: #0E2545;
+  border: 1.5px solid #1F3E68;
+  color: #FFFFFF;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.login-input::placeholder {
+  color: #6C8BB5;
+  opacity: 0.8;
+}
+
+.login-input:focus {
+  border-color: #56D867;
+  box-shadow: 0 0 0 3px rgba(86, 216, 103, 0.3);
+  background-color: #0F284B;
+}
+
+.login-input.has-error {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.login-input-wrapper .login-input {
+  padding-right: 3rem;
+}
+
+.login-password-toggle {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8EACDB;
+  opacity: 0.85;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.login-password-toggle:hover {
+  opacity: 1;
+  color: #56D867;
+}
+
+.login-password-toggle:focus-visible {
+  outline: 2px solid #56D867;
+  border-radius: 4px;
+}
+
+.login-field-error {
+  font-size: 12px;
+  color: #FCA5A5;
+  margin-top: 0.35rem;
+  line-height: 1.3;
+}
+
+/* Link Esqueci Minha Senha */
+.login-forgot-box {
+  margin-top: 0.35rem;
+  text-align: center;
+  width: 100%;
+}
+
+.login-forgot-link {
+  color: #56D867;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: #56D867;
+  text-underline-offset: 3px;
+  transition: opacity 0.2s;
+}
+
+.login-forgot-link:hover {
+  opacity: 0.85;
+}
+
+/* Botão de Ação Primária: Entrar */
+.login-submit-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 28px;
+  background-color: #56D867;
+  color: #09264D;
+  border: none;
+  font-family: var(--eff-font-body, 'IBM Plex Sans', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 1.25rem auto 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(86, 216, 103, 0.35);
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background-color: #48CE5B;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(86, 216, 103, 0.45);
+}
+
+.login-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Rodapé: Não possui uma conta? Crie uma */
+.login-switch-box {
+  margin-top: 1.25rem;
+  text-align: center;
+  width: 100%;
+}
+
+.login-switch-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.login-switch-link {
+  color: #56D867;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: #56D867;
+  text-underline-offset: 3px;
+  transition: opacity 0.2s;
+}
+
+.login-switch-link:hover {
+  opacity: 0.85;
+}
+
+/* Feedbacks e Alertas Padronizados e Profissionais */
+.login-feedback {
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  margin: 1.1rem 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.login-feedback p {
+  margin: 0;
+}
+
+.login-feedback-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.login-feedback-body {
+  flex: 1;
+}
+
+.login-feedback-error {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-left: 4px solid #EF4444;
+  color: #FEE2E2;
+}
+
+.login-feedback-error .login-feedback-icon {
+  color: #F87171;
+}
+
+.login-feedback-error p {
+  color: #FEE2E2;
+  font-weight: 500;
+}
+
+.login-feedback-error ul {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+  color: #FECACA;
+  font-size: 12.5px;
+}
+
+.login-feedback-notice {
+  background-color: rgba(86, 216, 103, 0.14);
+  border: 1px solid rgba(86, 216, 103, 0.4);
+  border-left: 4px solid #56D867;
+  color: #E8F8EC;
+}
+
+.login-feedback-notice .login-feedback-icon {
+  color: #56D867;
+}
+
+.login-feedback-notice p {
+  color: #E8F8EC;
+}
+
+/* ==========================================================================
+   LADO DIREITO: HERO SECTION (50% FLUSH)
+   Overlay sutil idêntico ao de Cadastro
+   ========================================================================== */
+
+.login-hero-section {
+  flex: 1 1 50%;
+  width: 50%;
+  height: 100vh;
+  max-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: #07172C;
+  display: flex;
+}
+
+.login-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.login-hero-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(7, 23, 44, 0.4) 0%,
+    rgba(11, 34, 64, 0.2) 100%
+  );
+  z-index: 1;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (TABLET & MOBILE)
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .login-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .login-hero-section {
+    display: none;
+  }
+
+  .login-form-section {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 100vh;
+    padding: 2.5rem 1.5rem;
+    justify-content: center;
+  }
+
+  .login-card {
+    max-width: 440px;
+    width: 100%;
+    margin: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form-section {
+    padding: 2rem 1.25rem;
+  }
+
+  .login-card {
+    max-width: 100%;
+  }
+
+  .login-title {
+    font-size: 26px;
+    margin-bottom: 1.5rem;
+  }
+
+  .login-input {
+    height: 48px;
+    font-size: 14px;
+    padding: 0 1rem;
+  }
+
+  .login-input-wrapper .login-input {
+    padding-right: 2.75rem;
+  }
+
+  .login-submit-btn {
+    height: 50px;
+    font-size: 15.5px;
+  }
+}
