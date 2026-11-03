@@ -1,0 +1,599 @@
+/* ==========================================================================
+   AI TEST WORKBENCH - EFFICIENTIA (CINTTIA) STYLES
+   Console de testes, diagnóstico e monitoramento da IA Ultrathink
+   ========================================================================== */
+
+.ai-workbench {
+  min-height: 100vh;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 28px 60px 28px;
+  background: var(--eff-bg-app, #d8deeb);
+  color: var(--eff-text-primary, #1f242e);
+  font-family: var(--eff-font-family, 'IBM Plex Sans', sans-serif);
+}
+
+/* Breadcrumbs */
+.ai-workbench__breadcrumbs {
+  margin-bottom: 16px;
+}
+
+.ai-workbench__breadcrumbs-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--eff-text-secondary, #526886);
+}
+
+.ai-workbench__breadcrumbs-list a {
+  color: var(--eff-blue-primary, #0f51ae);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ai-workbench__breadcrumbs-list a:hover {
+  text-decoration: underline;
+}
+
+.ai-workbench__breadcrumbs-sep {
+  opacity: 0.5;
+}
+
+/* Header & Metadados */
+.ai-workbench__header {
+  margin-bottom: 24px;
+}
+
+.ai-workbench__eyebrow {
+  margin: 0 0 4px 0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--eff-blue-primary, #0f51ae);
+}
+
+.ai-workbench__header h1 {
+  margin: 0 0 8px 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--eff-text-primary, #09264d);
+  letter-spacing: -0.02em;
+}
+
+.ai-workbench__description {
+  margin: 0 0 16px 0;
+  color: var(--eff-text-secondary, #526886);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  max-width: 820px;
+}
+
+.ai-workbench__meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px;
+  background: var(--eff-bg-card, #ffffff);
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(9, 38, 77, 0.04);
+}
+
+.ai-workbench__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+}
+
+.ai-workbench__meta-label {
+  font-weight: 700;
+  color: var(--eff-text-secondary, #526886);
+}
+
+.ai-workbench__endpoint-badge {
+  padding: 3px 8px;
+  background: #eaf2ff;
+  border-radius: 6px;
+  color: #0f51ae;
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ai-workbench__session-code {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--eff-text-primary, #1f242e);
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ai-workbench__btn-session-reset {
+  padding: 4px 10px;
+  border: 1px solid #c9defa;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f51ae;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-workbench__btn-session-reset:hover {
+  background: #eaf2ff;
+  border-color: #0f51ae;
+}
+
+/* Grid Principal */
+.ai-workbench__grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+
+.ai-workbench__card {
+  padding: 22px 24px;
+  background: var(--eff-bg-card, #ffffff);
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 16px;
+  box-shadow: var(--eff-shadow-card, 0 4px 18px rgba(9, 38, 77, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-workbench__card h2 {
+  margin: 0 0 4px 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.ai-workbench__card-desc {
+  margin: 0;
+  color: var(--eff-text-secondary, #526886);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* Viewport de Mensagens */
+.ai-workbench__messages-viewport {
+  height: 420px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 12px;
+  background: #f8fafd;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-workbench__message {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  word-break: break-word;
+}
+
+.ai-workbench__message--user {
+  align-self: flex-end;
+  background: #0f51ae;
+  color: #ffffff;
+  border-bottom-right-radius: 2px;
+}
+
+.ai-workbench__message--assistant {
+  align-self: flex-start;
+  background: #ffffff;
+  color: var(--eff-text-primary, #1f242e);
+  border: 1px solid #d5e0ee;
+  border-bottom-left-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.ai-workbench__message--error {
+  align-self: flex-start;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-bottom-left-radius: 2px;
+}
+
+.ai-workbench__message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.76rem;
+  opacity: 0.85;
+}
+
+.ai-workbench__message-sender {
+  font-weight: 700;
+}
+
+.ai-workbench__message-time {
+  font-size: 0.7rem;
+}
+
+.ai-workbench__message-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.ai-workbench__loading-bubble {
+  align-self: flex-start;
+  padding: 10px 14px;
+  background: #eaf2ff;
+  border: 1px solid #c9defa;
+  border-radius: 12px;
+  color: #0f51ae;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Sugestões Rápidas */
+.ai-workbench__chips-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-workbench__chips-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--eff-text-muted, #7889a3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-workbench__chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-workbench__chip-btn {
+  padding: 6px 12px;
+  border: 1px solid #d5e0ee;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: var(--eff-blue-primary, #0f51ae);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-workbench__chip-btn:hover:not(:disabled) {
+  background: #eaf2ff;
+  border-color: #0f51ae;
+}
+
+/* Formulário & Textarea */
+.ai-workbench__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-workbench__textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 10px;
+  background: var(--eff-bg-input, #f8fafd);
+  color: var(--eff-text-primary, #1f242e);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 70px;
+  box-sizing: border-box;
+}
+
+.ai-workbench__textarea:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--eff-blue-primary, #0f51ae);
+  box-shadow: 0 0 0 3px rgba(15, 81, 174, 0.15);
+}
+
+.ai-workbench__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-workbench__actions-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-workbench__btn-send {
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--eff-green-action, #56d867);
+  color: #09264d;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-workbench__btn-send:hover:not(:disabled) {
+  background: #47ce63;
+  transform: translateY(-1px);
+}
+
+.ai-workbench__btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-workbench__btn-clear {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--eff-text-secondary, #526886);
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-workbench__btn-clear:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+/* Coluna de Diagnósticos */
+.ai-workbench__diagnostics-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ai-workbench__pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f8fafd;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 10px;
+}
+
+.ai-workbench__empty-text {
+  margin: 0;
+  color: var(--eff-text-muted, #7889a3);
+  font-size: 0.84rem;
+  font-style: italic;
+}
+
+.ai-workbench__pipeline-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-workbench__agent-pill {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.ai-workbench__agent-pill--roteador {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.ai-workbench__agent-pill--faq {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ai-workbench__agent-pill--analise {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ai-workbench__agent-pill--guardrail {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ai-workbench__agent-arrow {
+  color: var(--eff-text-muted, #7889a3);
+  font-weight: bold;
+}
+
+/* SRE / Telemetria */
+.ai-workbench__sre-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-workbench__btn-metrics {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #c9defa;
+  border-radius: 8px;
+  background: #eaf2ff;
+  color: #0f51ae;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: all 0.2s ease;
+}
+
+.ai-workbench__btn-metrics:hover:not(:disabled) {
+  background: #0f51ae;
+  color: #ffffff;
+}
+
+.ai-workbench__metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.ai-workbench__metric-stat {
+  padding: 10px 12px;
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 8px;
+  background: #f8fafd;
+}
+
+.ai-workbench__metric-stat dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--eff-text-muted, #7889a3);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.ai-workbench__metric-stat dd {
+  margin: 0;
+  font-family: var(--eff-font-title, 'Manrope', sans-serif);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--eff-text-primary, #09264d);
+}
+
+.ai-workbench__slo-pill {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.ai-workbench__slo-pill--ok {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ai-workbench__slo-pill--fail {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Detalhes JSON */
+.ai-workbench__details {
+  border: 1px solid var(--eff-border-card, #dee7f3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #f8fafd;
+}
+
+.ai-workbench__details summary {
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: #0f51ae;
+  cursor: pointer;
+}
+
+.ai-workbench__raw-pre {
+  margin: 10px 0 0 0;
+  padding: 12px;
+  background: #09264d;
+  color: #93c5fd;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  max-height: 250px;
+}
+
+/* ==========================================================================
+   DARK MODE
+   ========================================================================== */
+
+html[data-theme='dark'] .ai-workbench {
+  background: var(--eff-dark-bg, #071329);
+  color: var(--eff-dark-text, #f2f7ff);
+}
+
+html[data-theme='dark'] .ai-workbench__meta-bar,
+html[data-theme='dark'] .ai-workbench__card,
+html[data-theme='dark'] .ai-workbench__message--assistant,
+html[data-theme='dark'] .ai-workbench__chip-btn,
+html[data-theme='dark'] .ai-workbench__metric-stat,
+html[data-theme='dark'] .ai-workbench__details {
+  background: var(--eff-dark-surface, #0e2545);
+  border-color: var(--eff-dark-border, #294f7a);
+}
+
+html[data-theme='dark'] .ai-workbench__header h1,
+html[data-theme='dark'] .ai-workbench__card h2,
+html[data-theme='dark'] .ai-workbench__metric-stat dd {
+  color: var(--eff-dark-text, #f2f7ff);
+}
+
+html[data-theme='dark'] .ai-workbench__messages-viewport,
+html[data-theme='dark'] .ai-workbench__pipeline,
+html[data-theme='dark'] .ai-workbench__textarea {
+  background: #071329;
+  border-color: var(--eff-dark-border, #294f7a);
+  color: var(--eff-dark-text, #f2f7ff);
+}
+
+html[data-theme='dark'] .ai-workbench__session-code {
+  background: #113778;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .ai-workbench__btn-session-reset,
+html[data-theme='dark'] .ai-workbench__btn-metrics {
+  background: #113778;
+  border-color: var(--eff-dark-border, #294f7a);
+  color: #93c5fd;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .ai-workbench__grid {
+    grid-template-columns: 1fr;
+  }
+}
