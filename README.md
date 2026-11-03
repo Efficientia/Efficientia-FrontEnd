@@ -1,75 +1,59 @@
-# React + TypeScript + Vite
+# Efficientia - Gestão Inteligente de Transporte Bovino e Bem-Estar Animal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Ambiente**: Produção (Web & Cloud)  
+> **Disciplina**: Desenvolvimento de Aplicações Distribuídas (DAD)  
+> **Conformidade Regulatória**: Portaria SDA/MAPA nº 1.280/2025
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🌐 URLs Oficiais da Aplicação Publicada
 
-## React Compiler
+| Serviço / Módulo | Provedor de Nuvem | URL de Acesso Público |
+| :--- | :--- | :--- |
+| **Frontend Web Corporativo** | Render | [https://efficientia-frontend.onrender.com](https://efficientia-frontend.onrender.com) |
+| **API Backend (Spring Boot)** | Render | [https://efficientia-api.onrender.com](https://efficientia-api.onrender.com) |
+| **Assistente Virtual Cinttia (FastAPI)** | Render | [https://ia-desktop.onrender.com](https://ia-desktop.onrender.com) |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📋 Quadro de Entregas da Disciplina (Sprints 10 a 12)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Sprint | Demanda / Requisito | Status | Data Início | Data Entrega | Chave Jira |
+| :---: | :--- | :---: | :---: | :---: | :---: |
+| **Sprint 10** | Gerenciar estado e efeitos sem mutação e com dependências corretas | **Entregue** | 25/09/2026 | 09/10/2026 | `EFFICIENTI-103` |
+| **Sprint 10** | Renderizar listas dinâmicas com chaves estáveis | **Entregue** | 28/09/2026 | 10/10/2026 | `EFFICIENTI-103` |
+| **Sprint 11** | Atender requisitos WCAG AA de semântica, teclado, foco e erros | **Entregue** | 01/10/2026 | 15/10/2026 | `EFFICIENTI-104` |
+| **Sprint 11** | Exibir estados de carregamento, sucesso e erro nas operações assíncronas | **Entregue** | 12/10/2026 | 18/10/2026 | `EFFICIENTI-102` |
+| **Sprint 12** | Publicar aplicação e registrar URL no README | **Entregue** | 15/10/2026 | 20/10/2026 | `EFFICIENTI-105` |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🔑 Credenciais de Demonstração e Avaliação
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Perfil Administrador (Gestão Global)
+* **Código da Empresa**: `EFF60720`
+* **E-mail**: `admin@efficientia.com.br` *(ou CPF: `123.456.789-01`)*
+* **Senha**: `SuperSenha@2026`
 
-```
+### 2. Perfil Analista (Auditoria de Diários & Bem-Estar)
+* **Código da Empresa**: `ANA-CARLA-01` *(ou `EFF60720`)*
+* **E-mail**: `carla.mendes@empresa.com`
+* **Senha**: `SuperSenha@2026`
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🚀 Execução Local do Projeto
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# 1. Instalar dependências
+npm install
 
+# 2. Executar servidor de desenvolvimento local
+npm run dev
+
+# 3. Executar validação estática de código (ESLint)
+npm run lint
+
+# 4. Gerar build otimizado de produção
+npm run build
 ```
