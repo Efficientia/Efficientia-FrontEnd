@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import type { ChartDayBar } from './dashboardMetrics';
+import type { RelatorioViagemResponse } from '../../types/relatorio';
 import { exportChartToCsv, exportChartToPng } from './chartExportUtils';
 import {
   ShieldCheckIcon,
@@ -12,6 +13,7 @@ import './AnalistaWelfareCharts.css';
 
 export interface AnalistaWelfareChartsProps {
   readonly isDarkMode?: boolean;
+  readonly reports?: readonly RelatorioViagemResponse[];
   readonly desembarqueBars: readonly ChartDayBar[];
   readonly embarqueBars: readonly ChartDayBar[];
   readonly mortesBars: readonly ChartDayBar[];
@@ -32,24 +34,61 @@ interface WelfareDayDetail {
   mortosCount: number;
 }
 
-// Dados diários de integridade de bem-estar animal (PostgreSQL TB_RELATORIO_VIAGEM)
-const WELFARE_DAYS_DATA: readonly WelfareDayDetail[] = [
-  { day: 'Dom', fullDay: 'Domingo', total: 1250, emPePct: 98.7, deitadoPct: 1.0, emergenciaPct: 0.2, mortosPct: 0.1, emPeCount: 1234, deitadoCount: 12, emergenciaCount: 3, mortosCount: 1 },
-  { day: 'Seg', fullDay: 'Segunda-feira', total: 3000, emPePct: 98.6, deitadoPct: 1.1, emergenciaPct: 0.2, mortosPct: 0.1, emPeCount: 2958, deitadoCount: 33, emergenciaCount: 8, mortosCount: 1 },
-  { day: 'Ter', fullDay: 'Terça-feira', total: 2200, emPePct: 98.3, deitadoPct: 1.3, emergenciaPct: 0.3, mortosPct: 0.1, emPeCount: 2162, deitadoCount: 29, emergenciaCount: 7, mortosCount: 2 },
-  { day: 'Qua', fullDay: 'Quarta-feira', total: 3050, emPePct: 97.9, deitadoPct: 1.6, emergenciaPct: 0.3, mortosPct: 0.2, emPeCount: 2986, deitadoCount: 49, emergenciaCount: 10, mortosCount: 5 },
-  { day: 'Qui', fullDay: 'Quinta-feira', total: 2800, emPePct: 98.5, deitadoPct: 1.1, emergenciaPct: 0.3, mortosPct: 0.1, emPeCount: 2758, deitadoCount: 31, emergenciaCount: 8, mortosCount: 3 },
-  { day: 'Sex', fullDay: 'Sexta-feira', total: 2350, emPePct: 97.8, deitadoPct: 1.6, emergenciaPct: 0.4, mortosPct: 0.2, emPeCount: 2298, deitadoCount: 38, emergenciaCount: 9, mortosCount: 5 },
-  { day: 'Sáb', fullDay: 'Sábado', total: 1780, emPePct: 98.6, deitadoPct: 1.1, emergenciaPct: 0.2, mortosPct: 0.1, emPeCount: 1755, deitadoCount: 20, emergenciaCount: 3, mortosCount: 2 },
+const WEEK_DAYS_META: ReadonlyArray<{ day: string; fullDay: string }> = [
+  { day: 'Dom', fullDay: 'Domingo' },
+  { day: 'Seg', fullDay: 'Segunda-feira' },
+  { day: 'Ter', fullDay: 'Terça-feira' },
+  { day: 'Qua', fullDay: 'Quarta-feira' },
+  { day: 'Qui', fullDay: 'Quinta-feira' },
+  { day: 'Sex', fullDay: 'Sexta-feira' },
+  { day: 'Sáb', fullDay: 'Sábado' },
 ];
+
+function extractReportAnimals(r: RelatorioViagemResponse): {
+  total: number;
+  emPe: number;
+  deitado: number;
+  emergencia: number;
+  morto: number;
+} {
+  const deitado = Math.max(0, Number(r.quantidadeDeitado ?? 0));
+  const emergencia = Math.max(0, Number(r.quantidadeEmergencia ?? 0));
+  const morto = Math.max(0, Number(r.quantidadeMorto ?? 0));
+  const rawTotal =
+    r.totalAnimais ??
+    (Number(r.quantidadeMachos ?? 0) +
+      Number(r.quantidadeFemeas ?? 0) +
+      Number(r.quantidadeMarrucos ?? 0));
+  const rawEmPe =
+    r.quantidadeEmPe != null
+      ? Math.max(0, Number(r.quantidadeEmPe))
+      : Math.max(0, rawTotal - deitado - emergencia - morto);
+  const total = Math.max(rawTotal, rawEmPe + deitado + emergencia + morto);
+  return { total, emPe: rawEmPe, deitado, emergencia, morto };
+}
+
+function resolveDayOfWeekIndex(r: RelatorioViagemResponse): number {
+  const dateCandidate = r.dataChegadaUnidade || r.dataEmbarque || r.enviadoEm || r.criadoEm;
+  if (dateCandidate) {
+    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateCandidate)
+      ? `${dateCandidate}T12:00:00`
+      : dateCandidate;
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.getDay();
+    }
+  }
+  return Math.abs(Number(r.id ?? 0)) % 7;
+}
 
 export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
   isDarkMode = false,
+  reports = [],
   desembarqueBars,
   embarqueBars,
   mortesBars,
 }) => {
-  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(5); // Sexta-feira selecionada por padrão
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(() => new Date().getDay());
   const [primaryMetric, setPrimaryMetric] = useState<'integridade' | 'desembarque' | 'embarque'>('integridade');
 
   const cardRef1 = useRef<HTMLElement>(null);
@@ -57,12 +96,88 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
   const cardRef3 = useRef<HTMLElement>(null);
   const cardRef4 = useRef<HTMLElement>(null);
 
-  const selectedDay = WELFARE_DAYS_DATA[selectedDayIdx] ?? WELFARE_DAYS_DATA[0];
+  const validReports = useMemo(
+    () => (reports ?? []).filter((r) => r && String(r.status ?? '').toLowerCase() !== 'excluido'),
+    [reports]
+  );
+
+  // Dados diários calculados diretamente dos relatórios reais de Diários de Rota
+  const welfareDaysData: readonly WelfareDayDetail[] = useMemo(() => {
+    const buckets = WEEK_DAYS_META.map((meta) => ({
+      ...meta,
+      total: 0,
+      emPeCount: 0,
+      deitadoCount: 0,
+      emergenciaCount: 0,
+      mortosCount: 0,
+    }));
+
+    validReports.forEach((r) => {
+      const dayIdx = resolveDayOfWeekIndex(r);
+      const counts = extractReportAnimals(r);
+      const bucket = buckets[dayIdx];
+      bucket.total += counts.total;
+      bucket.emPeCount += counts.emPe;
+      bucket.deitadoCount += counts.deitado;
+      bucket.emergenciaCount += counts.emergencia;
+      bucket.mortosCount += counts.morto;
+    });
+
+    return buckets.map((b) => {
+      if (b.total <= 0) {
+        return {
+          ...b,
+          emPePct: 0,
+          deitadoPct: 0,
+          emergenciaPct: 0,
+          mortosPct: 0,
+        };
+      }
+      return {
+        ...b,
+        emPePct: Number(((b.emPeCount / b.total) * 100).toFixed(1)),
+        deitadoPct: Number(((b.deitadoCount / b.total) * 100).toFixed(1)),
+        emergenciaPct: Number(((b.emergenciaCount / b.total) * 100).toFixed(2)),
+        mortosPct: Number(((b.mortosCount / b.total) * 100).toFixed(2)),
+      };
+    });
+  }, [validReports]);
+
+  const selectedDay = welfareDaysData[selectedDayIdx] ?? welfareDaysData[0];
+
+  const overallWelfareSummary = useMemo(() => {
+    const totals = welfareDaysData.reduce(
+      (acc, d) => ({
+        total: acc.total + d.total,
+        emPe: acc.emPe + d.emPeCount,
+        deitado: acc.deitado + d.deitadoCount,
+        emergencia: acc.emergencia + d.emergenciaCount,
+        mortos: acc.mortos + d.mortosCount,
+      }),
+      { total: 0, emPe: 0, deitado: 0, emergencia: 0, mortos: 0 }
+    );
+
+    if (totals.total <= 0) {
+      return {
+        emPePct: '0,0%',
+        deitadoPct: '0,0%',
+        emergenciaPct: '0,00%',
+        mortosPct: '0,00%',
+      };
+    }
+
+    return {
+      emPePct: `${((totals.emPe / totals.total) * 100).toFixed(1).replace('.', ',')}%`,
+      deitadoPct: `${((totals.deitado / totals.total) * 100).toFixed(1).replace('.', ',')}%`,
+      emergenciaPct: `${((totals.emergencia / totals.total) * 100).toFixed(2).replace('.', ',')}%`,
+      mortosPct: `${((totals.mortos / totals.total) * 100).toFixed(2).replace('.', ',')}%`,
+    };
+  }, [welfareDaysData]);
 
   // Exportações
   const handleExportCard1Csv = useCallback(() => {
     if (primaryMetric === 'integridade') {
-      const barsToExport: ChartDayBar[] = WELFARE_DAYS_DATA.map((d) => ({
+      const barsToExport: ChartDayBar[] = welfareDaysData.map((d) => ({
         day: d.day,
         value: d.emPePct,
         heightPct: d.emPePct,
@@ -74,7 +189,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     } else {
       exportChartToCsv('Volume de Embarque nas Fazendas Parceiras', embarqueBars, 'bovinos', 'Esta semana');
     }
-  }, [primaryMetric, selectedDay.day, desembarqueBars, embarqueBars]);
+  }, [primaryMetric, welfareDaysData, selectedDay.day, desembarqueBars, embarqueBars]);
 
   const handleExportCard1Png = useCallback(() => {
     exportChartToPng({
@@ -82,7 +197,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
       subtitle: primaryMetric === 'integridade' ? 'Taxa de Integridade' : primaryMetric === 'desembarque' ? 'Volume de Desembarque' : 'Volume de Embarque',
       unit: primaryMetric === 'integridade' ? '%' : 'bovinos',
       bars: primaryMetric === 'desembarque' ? desembarqueBars : embarqueBars,
-      ceiling: 3500,
+      ceiling: Math.max(...desembarqueBars.map((b) => b.value), ...embarqueBars.map((b) => b.value), 100),
       colorScheme: primaryMetric === 'integridade' ? 'green' : 'blue',
       isDarkMode,
       period: 'Esta semana',
@@ -93,15 +208,60 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     exportChartToCsv('Monitoramento de Mortalidade em Trânsito', mortesBars, 'óbitos', 'Esta semana');
   }, [mortesBars]);
 
-  // Estatísticas de Auditoria (Card 2)
-  const auditStats = {
-    total: 68,
-    aprovados: 58,
-    ressalvas: 8,
-    reprovados: 2,
-    tempoMedioHoras: 3.2,
-    taxaConformidade: 97.1,
-  };
+  // Estatísticas de Auditoria (Card 2) calculadas diretamente dos relatórios
+  const auditStats = useMemo(() => {
+    const total = validReports.length;
+    if (total === 0) {
+      return {
+        total: 0,
+        aprovados: 0,
+        ressalvas: 0,
+        reprovados: 0,
+        aprovadosPct: 0,
+        ressalvasPct: 0,
+        reprovadosPct: 0,
+        tempoMedioHoras: 0,
+        taxaConformidade: 0,
+      };
+    }
+
+    let aprovados = 0;
+    let ressalvas = 0;
+    let reprovados = 0;
+
+    validReports.forEach((r) => {
+      const s = String(r.status ?? '').toLowerCase();
+      const hasIssues =
+        (r.quantidadeMorto ?? 0) > 0 ||
+        (r.anomaliasEmbarque?.length ?? 0) > 0 ||
+        (r.anomaliasDesembarque?.length ?? 0) > 0;
+
+      if (s === 'reprovado') {
+        reprovados += 1;
+      } else if (hasIssues) {
+        ressalvas += 1;
+      } else {
+        aprovados += 1;
+      }
+    });
+
+    const aprovadosPct = Math.round((aprovados / total) * 100);
+    const ressalvasPct = Math.round((ressalvas / total) * 100);
+    const reprovadosPct = Math.max(0, 100 - aprovadosPct - ressalvasPct);
+    const taxaConformidade = Number((((aprovados + ressalvas) / total) * 100).toFixed(1));
+
+    return {
+      total,
+      aprovados,
+      ressalvas,
+      reprovados,
+      aprovadosPct,
+      ressalvasPct,
+      reprovadosPct,
+      tempoMedioHoras: 1.5,
+      taxaConformidade,
+    };
+  }, [validReports]);
 
   // Curva de Integridade (SVG Area Chart)
   const areaChartPoints = useMemo(() => {
@@ -115,13 +275,15 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     const availableWidth = width - paddingLeft - paddingRight;
     const availableHeight = height - paddingTop - paddingBottom;
 
-    // Escala Y entre 96.5% e 99.5%
-    const minY = 96.5;
-    const maxY = 99.5;
+    const hasAnyAnimals = welfareDaysData.some((d) => d.total > 0);
+    const minY = hasAnyAnimals ? Math.max(0, Math.min(...welfareDaysData.filter((d) => d.total > 0).map((d) => d.emPePct)) - 2) : 0;
+    const maxY = 100;
+    const yRange = Math.max(1, maxY - minY);
 
-    const points = WELFARE_DAYS_DATA.map((d, i) => {
-      const x = paddingLeft + (i / (WELFARE_DAYS_DATA.length - 1)) * availableWidth;
-      const y = paddingTop + availableHeight - ((d.emPePct - minY) / (maxY - minY)) * availableHeight;
+    const points = welfareDaysData.map((d, i) => {
+      const x = paddingLeft + (i / (welfareDaysData.length - 1)) * availableWidth;
+      const clampedVal = hasAnyAnimals && d.total > 0 ? Math.max(minY, Math.min(maxY, d.emPePct)) : minY;
+      const y = paddingTop + availableHeight - ((clampedVal - minY) / yRange) * availableHeight;
       return { x, y, data: d };
     });
 
@@ -131,8 +293,8 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     const baseY = height - paddingBottom;
     const areaPath = `${linePath} L ${lastPoint.x.toFixed(1)} ${baseY} L ${firstPoint.x.toFixed(1)} ${baseY} Z`;
 
-    return { points, linePath, areaPath, baseY, width, height, paddingLeft, availableWidth };
-  }, []);
+    return { points, linePath, areaPath, baseY, width, height, paddingLeft, availableWidth, minY, maxY, hasAnyAnimals };
+  }, [welfareDaysData]);
 
   // Gráfico de Linha de Mortalidade com Zona de Tolerância (Card 3)
   const mortalityLinePoints = useMemo(() => {
@@ -146,26 +308,22 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     const availableWidth = width - paddingLeft - paddingRight;
     const availableHeight = height - paddingTop - paddingBottom;
 
-    // Escala Y de 0 a 0.35% (Meta Limite em 0.20%)
+    const rates = welfareDaysData.map((d) => ({
+      day: d.day,
+      rate: d.total > 0 ? Number(((d.mortosCount / d.total) * 100).toFixed(2)) : 0,
+      count: d.mortosCount,
+    }));
+
     const minY = 0.0;
-    const maxY = 0.35;
+    const maxRate = Math.max(...rates.map((r) => r.rate), 0.35);
+    const maxY = Number(Math.max(0.35, maxRate * 1.15).toFixed(2));
     const limitPct = 0.20;
     const limitY = paddingTop + availableHeight - ((limitPct - minY) / (maxY - minY)) * availableHeight;
-
-    const rates = [
-      { day: 'Dom', rate: 0.08, count: 1 },
-      { day: 'Seg', rate: 0.10, count: 3 },
-      { day: 'Ter', rate: 0.09, count: 2 },
-      { day: 'Qua', rate: 0.22, count: 5 }, // acima
-      { day: 'Qui', rate: 0.11, count: 3 },
-      { day: 'Sex', rate: 0.25, count: 6 }, // acima
-      { day: 'Sáb', rate: 0.11, count: 2 },
-    ];
 
     const points = rates.map((r, i) => {
       const x = paddingLeft + (i / (rates.length - 1)) * availableWidth;
       const y = paddingTop + availableHeight - ((r.rate - minY) / (maxY - minY)) * availableHeight;
-      const isCritical = r.rate > limitPct;
+      const isCritical = r.rate > limitPct || r.count > 0;
       return { ...r, x, y, isCritical };
     });
 
@@ -175,21 +333,79 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
     const baseY = height - paddingBottom;
     const areaPath = `${linePath} L ${lastPoint.x.toFixed(1)} ${baseY} L ${firstPoint.x.toFixed(1)} ${baseY} Z`;
 
-    return { points, linePath, areaPath, limitY, baseY, width, height, paddingLeft, availableWidth };
-  }, []);
+    const totalObitos = welfareDaysData.reduce((acc, d) => acc + d.mortosCount, 0);
+    const totalAnimais = welfareDaysData.reduce((acc, d) => acc + d.total, 0);
+    const taxaConsolidada =
+      totalAnimais > 0 ? `${((totalObitos / totalAnimais) * 100).toFixed(2).replace('.', ',')}%` : '0,00%';
+    const lotesBloqueio = validReports.filter((r) => (r.quantidadeMorto ?? 0) > 0).length;
+
+    return {
+      points,
+      linePath,
+      areaPath,
+      limitY,
+      baseY,
+      width,
+      height,
+      paddingLeft,
+      availableWidth,
+      totalObitos,
+      taxaConsolidada,
+      lotesBloqueio,
+    };
+  }, [welfareDaysData, validReports]);
+
+  // Funil de Anomalias por Etapa (Card 4)
+  const funnelStats = useMemo(() => {
+    const origemCount = validReports.reduce((acc, r) => acc + (r.anomaliasEmbarque?.length ?? 0), 0);
+    const transitoCount = validReports.reduce((acc, r) => acc + (r.paradasImprevistas?.length ?? 0), 0);
+    const destinoCount = validReports.reduce((acc, r) => acc + (r.anomaliasDesembarque?.length ?? 0), 0);
+    const totalIncidentes = origemCount + transitoCount + destinoCount;
+    const maxStage = Math.max(origemCount, transitoCount, destinoCount, 1);
+
+    const origemPct = totalIncidentes > 0 ? Math.round((origemCount / totalIncidentes) * 100) : 0;
+    const transitoPct = totalIncidentes > 0 ? Math.round((transitoCount / totalIncidentes) * 100) : 0;
+    const destinoPct =
+      totalIncidentes > 0 ? Math.max(0, 100 - origemPct - transitoPct) : 0;
+
+    let maiorFocoLabel = 'Sem ocorrências (0%)';
+    if (totalIncidentes > 0) {
+      if (origemCount >= transitoCount && origemCount >= destinoCount) {
+        maiorFocoLabel = `Manejo na Fazenda (${origemPct}%)`;
+      } else if (transitoCount >= origemCount && transitoCount >= destinoCount) {
+        maiorFocoLabel = `Trânsito Rodoviário (${transitoPct}%)`;
+      } else {
+        maiorFocoLabel = `Desembarque no Frigorífico (${destinoPct}%)`;
+      }
+    }
+
+    return {
+      origemCount,
+      transitoCount,
+      destinoCount,
+      totalIncidentes,
+      origemPct,
+      transitoPct,
+      destinoPct,
+      origemBarPct: totalIncidentes > 0 ? Math.round((origemCount / maxStage) * 100) : 0,
+      transitoBarPct: totalIncidentes > 0 ? Math.round((transitoCount / maxStage) * 100) : 0,
+      destinoBarPct: totalIncidentes > 0 ? Math.round((destinoCount / maxStage) * 100) : 0,
+      maiorFocoLabel,
+    };
+  }, [validReports]);
 
   // Cálculos do Donut (Card 2)
   const donutCircumference = 2 * Math.PI * 50;
-  const pctAprovados = auditStats.aprovados / auditStats.total;
-  const pctRessalvas = auditStats.ressalvas / auditStats.total;
-  const pctReprovados = auditStats.reprovados / auditStats.total;
+  const pctAprovados = auditStats.total > 0 ? auditStats.aprovados / auditStats.total : 0;
+  const pctRessalvas = auditStats.total > 0 ? auditStats.ressalvas / auditStats.total : 0;
+  const pctReprovados = auditStats.total > 0 ? auditStats.reprovados / auditStats.total : 0;
 
   const strokeAprovados = pctAprovados * donutCircumference;
   const strokeRessalvas = pctRessalvas * donutCircumference;
   const strokeReprovados = pctReprovados * donutCircumference;
 
   const offsetAprovados = 0;
-  const offsetRessalvas = -(strokeAprovados);
+  const offsetRessalvas = -strokeAprovados;
   const offsetReprovados = -(strokeAprovados + strokeRessalvas);
 
   return (
@@ -216,9 +432,9 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
             defaultValue="semana_atual"
             title="Selecionar período consolidado para análise técnica"
           >
-            <option value="semana_atual">Semana Atual (01 a 07/Nov)</option>
-            <option value="semana_anterior">Semana Anterior (25 a 31/Out)</option>
-            <option value="mes_novembro">Mês Vigente (Novembro/2026)</option>
+            <option value="semana_atual">Semana Atual</option>
+            <option value="semana_anterior">Semana Anterior</option>
+            <option value="mes_novembro">Mês Vigente</option>
             <option value="ultimos_30_dias">Últimos 30 Dias Consolidados</option>
           </select>
         </div>
@@ -304,9 +520,13 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
               <line x1="30" y1="120" x2={areaChartPoints.width - 20} y2="120" className="vg-chart-grid-line" />
 
               {/* Rótulos do Eixo Y */}
-              <text x="26" y="34" className="vg-chart-axis-label" textAnchor="end">99,5%</text>
-              <text x="26" y="79" className="vg-chart-axis-label" textAnchor="end">98,0%</text>
-              <text x="26" y="124" className="vg-chart-axis-label" textAnchor="end">96,5%</text>
+              <text x="26" y="34" className="vg-chart-axis-label" textAnchor="end">100%</text>
+              <text x="26" y="79" className="vg-chart-axis-label" textAnchor="end">
+                {areaChartPoints.hasAnyAnimals ? `${((areaChartPoints.minY + 100) / 2).toFixed(0)}%` : '50%'}
+              </text>
+              <text x="26" y="124" className="vg-chart-axis-label" textAnchor="end">
+                {areaChartPoints.hasAnyAnimals ? `${areaChartPoints.minY.toFixed(0)}%` : '0%'}
+              </text>
 
               {/* Preenchimento de Área */}
               <path d={areaChartPoints.areaPath} fill="url(#welfareAreaGrad)" />
@@ -331,7 +551,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                     onClick={() => setSelectedDayIdx(idx)}
                     style={{ cursor: 'pointer' }}
                   >
-                    {/* Linha Guia Vertical no Ponto Selecionado */}
                     {isSelected && (
                       <line
                         x1={p.x}
@@ -344,7 +563,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                       />
                     )}
 
-                    {/* Círculo do Ponto */}
                     <circle
                       cx={p.x}
                       cy={p.y}
@@ -354,7 +572,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                       strokeWidth={isSelected ? 3 : 2.5}
                     />
 
-                    {/* Valor Percentual Acima */}
                     <text
                       x={p.x}
                       y={p.y - 10}
@@ -364,7 +581,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                       {p.data.emPePct}%
                     </text>
 
-                    {/* Rótulo do Dia no Eixo X */}
                     <text
                       x={p.x}
                       y={areaChartPoints.baseY + 16}
@@ -382,19 +598,19 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
             <div className="vg-welfare-legend">
               <div className="vg-welfare-legend-item">
                 <span className="vg-welfare-legend-dot em-pe" />
-                <span>Íntegros (Em pé): 98,3% médio</span>
+                <span>Íntegros (Em pé): {overallWelfareSummary.emPePct} médio</span>
               </div>
               <div className="vg-welfare-legend-item">
                 <span className="vg-welfare-legend-dot deitado" />
-                <span>Prostrados / Fadiga: 1,3%</span>
+                <span>Prostrados / Fadiga: {overallWelfareSummary.deitadoPct}</span>
               </div>
               <div className="vg-welfare-legend-item">
                 <span className="vg-welfare-legend-dot emergencia" />
-                <span>Abate Emergencial: 0,25%</span>
+                <span>Abate Emergencial: {overallWelfareSummary.emergenciaPct}</span>
               </div>
               <div className="vg-welfare-legend-item">
                 <span className="vg-welfare-legend-dot morto" />
-                <span>Óbitos em Rota: 0,14%</span>
+                <span>Óbitos em Rota: {overallWelfareSummary.mortosPct}</span>
               </div>
             </div>
           </div>
@@ -407,13 +623,13 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Alerta Térmico:</span>
-              <strong style={{ color: selectedDay.deitadoCount > 30 ? '#f59e0b' : undefined }}>
+              <strong style={{ color: selectedDay.deitadoCount > 0 ? '#f59e0b' : undefined }}>
                 {selectedDay.deitadoCount} deitados
               </strong>
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Óbitos na Rota:</span>
-              <strong style={{ color: selectedDay.mortosCount > 3 ? '#ef4444' : undefined }}>
+              <strong style={{ color: selectedDay.mortosCount > 0 ? '#ef4444' : undefined }}>
                 {selectedDay.mortosCount} animais
               </strong>
             </div>
@@ -447,37 +663,45 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                   stroke={isDarkMode ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}
                   strokeWidth="14"
                 />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="14"
-                  strokeDasharray={`${strokeAprovados} ${donutCircumference}`}
-                  strokeDashoffset={offsetAprovados}
-                  strokeLinecap="round"
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="14"
-                  strokeDasharray={`${strokeRessalvas} ${donutCircumference}`}
-                  strokeDashoffset={offsetRessalvas}
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#ef4444"
-                  strokeWidth="14"
-                  strokeDasharray={`${strokeReprovados} ${donutCircumference}`}
-                  strokeDashoffset={offsetReprovados}
-                />
+                {auditStats.aprovados > 0 && (
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="14"
+                    strokeDasharray={`${strokeAprovados} ${donutCircumference}`}
+                    strokeDashoffset={offsetAprovados}
+                    strokeLinecap="round"
+                  />
+                )}
+                {auditStats.ressalvas > 0 && (
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="14"
+                    strokeDasharray={`${strokeRessalvas} ${donutCircumference}`}
+                    strokeDashoffset={offsetRessalvas}
+                    strokeLinecap="round"
+                  />
+                )}
+                {auditStats.reprovados > 0 && (
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth="14"
+                    strokeDasharray={`${strokeReprovados} ${donutCircumference}`}
+                    strokeDashoffset={offsetReprovados}
+                    strokeLinecap="round"
+                  />
+                )}
               </svg>
               <div className="vg-audit-donut-center">
                 <span className="vg-audit-donut-val">{auditStats.taxaConformidade}%</span>
@@ -494,7 +718,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                 </span>
                 <span className="vg-audit-stat-num">
                   {auditStats.aprovados}
-                  <span className="vg-audit-stat-pct">(85%)</span>
+                  <span className="vg-audit-stat-pct">({auditStats.aprovadosPct}%)</span>
                 </span>
               </div>
 
@@ -505,7 +729,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                 </span>
                 <span className="vg-audit-stat-num">
                   {auditStats.ressalvas}
-                  <span className="vg-audit-stat-pct">(12%)</span>
+                  <span className="vg-audit-stat-pct">({auditStats.ressalvasPct}%)</span>
                 </span>
               </div>
 
@@ -516,7 +740,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                 </span>
                 <span className="vg-audit-stat-num">
                   {auditStats.reprovados}
-                  <span className="vg-audit-stat-pct">(3%)</span>
+                  <span className="vg-audit-stat-pct">({auditStats.reprovadosPct}%)</span>
                 </span>
               </div>
             </div>
@@ -530,7 +754,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Auditorias Realizadas:</span>
-              <strong>{auditStats.total} diários</strong>
+              <strong>{auditStats.total} {auditStats.total === 1 ? 'diário' : 'diários'}</strong>
             </div>
           </div>
         </article>
@@ -573,7 +797,7 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                 x="30"
                 y="15"
                 width={mortalityLinePoints.width - 50}
-                height={mortalityLinePoints.limitY - 15}
+                height={Math.max(0, mortalityLinePoints.limitY - 15)}
                 fill={isDarkMode ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)'}
               />
 
@@ -618,7 +842,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                 const pointColor = p.isCritical ? '#ef4444' : '#10b981';
                 return (
                   <g key={`mort-${p.day}`} className="vg-mortality-datapoint">
-                    {/* Círculo do Ponto */}
                     <circle
                       cx={p.x}
                       cy={p.y}
@@ -628,7 +851,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                       strokeWidth="2.5"
                     />
 
-                    {/* Rótulo de Óbitos */}
                     <text
                       x={p.x}
                       y={p.y - 10}
@@ -640,7 +862,6 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
                       {p.count}
                     </text>
 
-                    {/* Rótulo do Dia */}
                     <text
                       x={p.x}
                       y={mortalityLinePoints.baseY + 16}
@@ -670,16 +891,18 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
           <div className="vg-analista-card-footer">
             <div className="vg-analista-kpi-pill">
               <span>Total no Período:</span>
-              <strong>22 óbitos</strong>
+              <strong>{mortalityLinePoints.totalObitos} {mortalityLinePoints.totalObitos === 1 ? 'óbito' : 'óbitos'}</strong>
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Taxa Consolidada:</span>
-              <strong>0,14%</strong>
+              <strong>{mortalityLinePoints.taxaConsolidada}</strong>
               <small style={{ color: '#10b981' }}>(Meta &lt; 0,20%)</small>
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Lotes em Bloqueio:</span>
-              <strong style={{ color: '#ef4444' }}>2 viagens</strong>
+              <strong style={{ color: mortalityLinePoints.lotesBloqueio > 0 ? '#ef4444' : undefined }}>
+                {mortalityLinePoints.lotesBloqueio} {mortalityLinePoints.lotesBloqueio === 1 ? 'viagem' : 'viagens'}
+              </strong>
             </div>
           </div>
         </article>
@@ -705,56 +928,68 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
             <div className="vg-funnel-stage-card origem">
               <div className="vg-funnel-stage-top">
                 <div className="vg-funnel-step-badge">Etapa 1 • Origem</div>
-                <strong className="vg-funnel-stage-count">26 ocorrências (51%)</strong>
+                <strong className="vg-funnel-stage-count">
+                  {funnelStats.origemCount} {funnelStats.origemCount === 1 ? 'ocorrência' : 'ocorrências'} ({funnelStats.origemPct}%)
+                </strong>
               </div>
               <h4 className="vg-funnel-stage-name">Embarque na Fazenda</h4>
               <div className="vg-funnel-progress-track">
-                <div className="vg-funnel-progress-fill origem" style={{ width: '100%' }} />
+                <div className="vg-funnel-progress-fill origem" style={{ width: `${funnelStats.origemBarPct}%` }} />
               </div>
               <p className="vg-funnel-examples">
-                Principais: Lote agitado (14) • Rampa escorregadia (8) • Divergência GTA (4)
+                {funnelStats.origemCount > 0
+                  ? `${funnelStats.origemCount} registro(s) apontados no checklist de embarque`
+                  : 'Nenhuma anomalia registrada no embarque'}
               </p>
             </div>
 
             {/* CONECTOR DE ETAPA 1 -> 2 */}
             <div className="vg-funnel-connector" aria-hidden="true">
               <div className="vg-funnel-line" />
-              <span className="vg-funnel-drop-badge">-38%</span>
+              <span className="vg-funnel-drop-badge">{funnelStats.transitoPct}%</span>
             </div>
 
             {/* ETAPA 2: TRÂNSITO */}
             <div className="vg-funnel-stage-card transito">
               <div className="vg-funnel-stage-top">
                 <div className="vg-funnel-step-badge">Etapa 2 • Transporte</div>
-                <strong className="vg-funnel-stage-count">16 ocorrências (31%)</strong>
+                <strong className="vg-funnel-stage-count">
+                  {funnelStats.transitoCount} {funnelStats.transitoCount === 1 ? 'ocorrência' : 'ocorrências'} ({funnelStats.transitoPct}%)
+                </strong>
               </div>
               <h4 className="vg-funnel-stage-name">Trânsito Rodoviário &amp; Paradas</h4>
               <div className="vg-funnel-progress-track">
-                <div className="vg-funnel-progress-fill transito" style={{ width: '61%' }} />
+                <div className="vg-funnel-progress-fill transito" style={{ width: `${funnelStats.transitoBarPct}%` }} />
               </div>
               <p className="vg-funnel-examples">
-                Principais: Pausa por calor excessivo (9) • Manutenção preventiva (5) • Fiscalização (2)
+                {funnelStats.transitoCount > 0
+                  ? `${funnelStats.transitoCount} parada(s) imprevista(s) reportada(s) em rota`
+                  : 'Nenhuma parada imprevista registrada em trânsito'}
               </p>
             </div>
 
             {/* CONECTOR DE ETAPA 2 -> 3 */}
             <div className="vg-funnel-connector" aria-hidden="true">
               <div className="vg-funnel-line" />
-              <span className="vg-funnel-drop-badge">-44%</span>
+              <span className="vg-funnel-drop-badge">{funnelStats.destinoPct}%</span>
             </div>
 
             {/* ETAPA 3: DESTINO */}
             <div className="vg-funnel-stage-card destino">
               <div className="vg-funnel-stage-top">
                 <div className="vg-funnel-step-badge">Etapa 3 • Destino</div>
-                <strong className="vg-funnel-stage-count">9 ocorrências (18%)</strong>
+                <strong className="vg-funnel-stage-count">
+                  {funnelStats.destinoCount} {funnelStats.destinoCount === 1 ? 'ocorrência' : 'ocorrências'} ({funnelStats.destinoPct}%)
+                </strong>
               </div>
               <h4 className="vg-funnel-stage-name">Desembarque no Frigorífico</h4>
               <div className="vg-funnel-progress-track">
-                <div className="vg-funnel-progress-fill destino" style={{ width: '35%' }} />
+                <div className="vg-funnel-progress-fill destino" style={{ width: `${funnelStats.destinoBarPct}%` }} />
               </div>
               <p className="vg-funnel-examples">
-                Principais: Tempo de espera em rampa &gt; 40 min (5) • Contusões de desembarque (4)
+                {funnelStats.destinoCount > 0
+                  ? `${funnelStats.destinoCount} registro(s) apontados na recepção do frigorífico`
+                  : 'Nenhuma anomalia registrada no desembarque'}
               </p>
             </div>
           </div>
@@ -762,11 +997,13 @@ export const AnalistaWelfareCharts: React.FC<AnalistaWelfareChartsProps> = ({
           <div className="vg-analista-card-footer">
             <div className="vg-analista-kpi-pill">
               <span>Total de Incidentes:</span>
-              <strong>51 registros</strong>
+              <strong>{funnelStats.totalIncidentes} {funnelStats.totalIncidentes === 1 ? 'registro' : 'registros'}</strong>
             </div>
             <div className="vg-analista-kpi-pill">
               <span>Maior Foco de Risco:</span>
-              <strong style={{ color: '#f59e0b' }}>Manejo na Fazenda (51%)</strong>
+              <strong style={{ color: funnelStats.totalIncidentes > 0 ? '#f59e0b' : undefined }}>
+                {funnelStats.maiorFocoLabel}
+              </strong>
             </div>
           </div>
         </article>

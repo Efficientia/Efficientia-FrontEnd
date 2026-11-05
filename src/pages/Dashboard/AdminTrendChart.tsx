@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { exportChartToCsv, exportChartToPng } from './chartExportUtils';
 import type { ChartDayBar } from './dashboardMetrics';
+import type { RelatorioViagemResponse } from '../../types/relatorio';
 
 export type TrendMetricType = 'bovinos' | 'km' | 'pontualidade';
 
@@ -13,23 +14,27 @@ interface DataPoint {
   viagens: number;
 }
 
-const WEEK_DATA: readonly DataPoint[] = [
-  { day: 'Dom', fullDay: 'Domingo', bovinos: 420, km: 1450, pontualidade: 98.5, viagens: 4 },
-  { day: 'Seg', fullDay: 'Segunda-feira', bovinos: 980, km: 3420, pontualidade: 96.8, viagens: 9 },
-  { day: 'Ter', fullDay: 'Terça-feira', bovinos: 760, km: 2890, pontualidade: 97.4, viagens: 7 },
-  { day: 'Qua', fullDay: 'Quarta-feira', bovinos: 1140, km: 4120, pontualidade: 95.9, viagens: 11 },
-  { day: 'Qui', fullDay: 'Quinta-feira', bovinos: 920, km: 3650, pontualidade: 98.2, viagens: 8 },
-  { day: 'Sex', fullDay: 'Sexta-feira', bovinos: 1280, km: 4580, pontualidade: 99.1, viagens: 12 },
-  { day: 'Sáb', fullDay: 'Sábado', bovinos: 640, km: 2340, pontualidade: 98.0, viagens: 6 },
+const WEEK_DAYS_META: ReadonlyArray<{ day: string; fullDay: string }> = [
+  { day: 'Dom', fullDay: 'Domingo' },
+  { day: 'Seg', fullDay: 'Segunda-feira' },
+  { day: 'Ter', fullDay: 'Terça-feira' },
+  { day: 'Qua', fullDay: 'Quarta-feira' },
+  { day: 'Qui', fullDay: 'Quinta-feira' },
+  { day: 'Sex', fullDay: 'Sexta-feira' },
+  { day: 'Sáb', fullDay: 'Sábado' },
 ];
 
 interface AdminTrendChartProps {
   isDarkMode?: boolean;
+  reports?: readonly RelatorioViagemResponse[];
 }
 
-export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = false }) => {
+export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({
+  isDarkMode = false,
+  reports = [],
+}) => {
   const [metric, setMetric] = useState<TrendMetricType>('bovinos');
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(5); // Default highlight Friday
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(() => new Date().getDay());
   const [period, setPeriod] = useState<'esta_semana' | 'semana_anterior' | 'mes_atual'>('esta_semana');
   const [feedback, setFeedback] = useState<string | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -39,6 +44,61 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
     setFeedback(msg);
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(null), 2500);
   }, []);
+
+  const weekData: readonly DataPoint[] = useMemo(() => {
+    const valid = (reports ?? []).filter(
+      (r) => r && String(r.status ?? '').toLowerCase() !== 'excluido'
+    );
+
+    const buckets = WEEK_DAYS_META.map((meta) => ({
+      ...meta,
+      bovinos: 0,
+      km: 0,
+      pontualidadeSum: 0,
+      viagens: 0,
+    }));
+
+    valid.forEach((r) => {
+      const dateStr = r.dataChegadaUnidade || r.dataEmbarque || r.enviadoEm || r.criadoEm;
+      let dayIdx = Math.abs(Number(r.id ?? 0)) % 7;
+      if (dateStr) {
+        const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? `${dateStr}T12:00:00` : dateStr;
+        const parsed = new Date(normalized);
+        if (!Number.isNaN(parsed.getTime())) {
+          dayIdx = parsed.getDay();
+        }
+      }
+
+      const bov =
+        r.totalAnimais ??
+        (Number(r.quantidadeMachos ?? 0) +
+          Number(r.quantidadeFemeas ?? 0) +
+          Number(r.quantidadeMarrucos ?? 0));
+      const kmVal =
+        r.distanciaPercorridaKm != null
+          ? Math.max(0, Number(r.distanciaPercorridaKm))
+          : r.kmChegadaDesembarcadouro != null && r.kmSaidaEmbarcadouro != null
+          ? Math.max(0, Number(r.kmChegadaDesembarcadouro) - Number(r.kmSaidaEmbarcadouro))
+          : 0;
+      const paradas = r.paradasImprevistas?.length ?? 0;
+      const slaTrip = paradas === 0 ? 100 : Math.max(85, 100 - paradas * 4);
+
+      const bucket = buckets[dayIdx];
+      bucket.bovinos += Math.max(0, bov);
+      bucket.km += kmVal;
+      bucket.pontualidadeSum += slaTrip;
+      bucket.viagens += 1;
+    });
+
+    return buckets.map((b) => ({
+      day: b.day,
+      fullDay: b.fullDay,
+      bovinos: b.bovinos,
+      km: b.km,
+      pontualidade: b.viagens > 0 ? Number((b.pontualidadeSum / b.viagens).toFixed(1)) : 0,
+      viagens: b.viagens,
+    }));
+  }, [reports]);
 
   const metricConfig = useMemo(() => {
     switch (metric) {
@@ -72,12 +132,25 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
     }
   }, [metric, isDarkMode]);
 
-  // Totals & Averages
-  const values = useMemo(() => WEEK_DATA.map((d) => d[metric]), [metric]);
+  const values = useMemo(() => weekData.map((d) => d[metric]), [weekData, metric]);
   const total = useMemo(() => values.reduce((a, b) => a + b, 0), [values]);
-  const avg = useMemo(() => (values.length > 0 ? total / values.length : 0), [total, values.length]);
+  const activeDaysCount = useMemo(
+    () => (metric === 'pontualidade' ? weekData.filter((d) => d.viagens > 0).length : weekData.length),
+    [weekData, metric]
+  );
+  const avg = useMemo(
+    () => (activeDaysCount > 0 ? total / activeDaysCount : 0),
+    [total, activeDaysCount]
+  );
 
-  // SVG Coordinates calculation
+  const peakDay = useMemo(() => {
+    let best = weekData[0];
+    weekData.forEach((d) => {
+      if (d[metric] > best[metric]) best = d;
+    });
+    return best;
+  }, [weekData, metric]);
+
   const width = 640;
   const height = 210;
   const paddingX = 42;
@@ -87,28 +160,23 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
   const chartW = width - paddingX * 2;
   const chartH = height - paddingTop - paddingBottom;
 
-  const minVal = useMemo(() => {
-    if (metric === 'pontualidade') return 90;
-    return 0;
-  }, [metric]);
-
+  const minVal = 0;
   const maxVal = useMemo(() => {
     if (metric === 'pontualidade') return 100;
-    const peak = Math.max(...values, 100);
+    const peak = Math.max(...values, 10);
     return Math.ceil(peak * 1.15);
   }, [metric, values]);
 
   const points = useMemo(() => {
     const range = maxVal - minVal || 1;
-    return WEEK_DATA.map((d, i) => {
-      const x = paddingX + (i / (WEEK_DATA.length - 1)) * chartW;
+    return weekData.map((d, i) => {
+      const x = paddingX + (i / (weekData.length - 1)) * chartW;
       const normalizedY = (d[metric] - minVal) / range;
       const y = paddingTop + chartH - normalizedY * chartH;
       return { x, y, data: d, val: d[metric] };
     });
-  }, [metric, minVal, maxVal, paddingX, chartW, paddingTop, chartH]);
+  }, [weekData, metric, minVal, maxVal, paddingX, chartW, paddingTop, chartH]);
 
-  // Smooth Bézier Spline generator
   const { pathD, areaD } = useMemo(() => {
     if (points.length < 2) return { pathD: '', areaD: '' };
 
@@ -129,7 +197,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
     return { pathD: pD, areaD: aD };
   }, [points, paddingTop, chartH]);
 
-  // Y Axis ticks
   const yTicks = useMemo(() => {
     const steps = 4;
     const ticks: { val: number; y: number }[] = [];
@@ -146,26 +213,26 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
 
   const handleExportCsv = useCallback(() => {
     try {
-      const barsForExport: ChartDayBar[] = WEEK_DATA.map((d) => ({
+      const barsForExport: ChartDayBar[] = weekData.map((d) => ({
         day: d.day,
         value: d[metric],
         heightPct: maxVal > 0 ? (d[metric] / maxVal) * 100 : 0,
-        highlight: d.day === 'Sex',
+        highlight: d.day === peakDay.day,
       }));
       exportChartToCsv(metricConfig.title, barsForExport, metricConfig.unit, 'Esta semana');
       showFeedback('Planilha CSV gerada com sucesso!');
     } catch {
       showFeedback('Erro ao exportar CSV.');
     }
-  }, [metric, maxVal, metricConfig, showFeedback]);
+  }, [weekData, metric, maxVal, peakDay.day, metricConfig, showFeedback]);
 
   const handleExportPng = useCallback(() => {
     try {
-      const barsForExport: ChartDayBar[] = WEEK_DATA.map((d) => ({
+      const barsForExport: ChartDayBar[] = weekData.map((d) => ({
         day: d.day,
         value: d[metric],
         heightPct: maxVal > 0 ? (d[metric] / maxVal) * 100 : 0,
-        highlight: d.day === 'Sex',
+        highlight: d.day === peakDay.day,
       }));
       exportChartToPng({
         title: metricConfig.title,
@@ -180,7 +247,7 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
     } catch {
       showFeedback('Erro ao gerar imagem.');
     }
-  }, [metric, maxVal, metricConfig, isDarkMode, showFeedback]);
+  }, [weekData, metric, maxVal, peakDay.day, metricConfig, isDarkMode, showFeedback]);
 
   return (
     <article className="vg-card vg-admin-trend-card" aria-label="Evolução e Desempenho Operacional">
@@ -196,7 +263,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
 
         {/* CONTROLES DO TOPO: MÉTRICA, PERÍODO E EXPORTAÇÕES */}
         <div className="vg-admin-header-actions">
-          {/* SELETOR DE PERÍODO */}
           <select
             className="vg-period-select"
             value={period}
@@ -208,7 +274,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
             <option value="mes_atual">Mês Atual</option>
           </select>
 
-          {/* BOTÕES DE EXPORTAÇÃO */}
           <button
             type="button"
             className="vg-trend-tool-btn"
@@ -242,7 +307,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
         </div>
       </div>
 
-      {/* FEEDBACK TOAST */}
       {feedback && (
         <div className="eff-chart-toast" role="status" aria-live="polite">
           <span>{feedback}</span>
@@ -301,7 +365,9 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
           </div>
           <div className="vg-trend-stat-badge accent">
             <span className="vg-trend-stat-lbl">Pico:</span>
-            <strong className="vg-trend-stat-val">Sexta ({metricConfig.format(WEEK_DATA[5][metric])})</strong>
+            <strong className="vg-trend-stat-val">
+              {total > 0 ? `${peakDay.day} (${metricConfig.format(peakDay[metric])})` : 'Sem registros (0)'}
+            </strong>
           </div>
         </div>
       </div>
@@ -326,20 +392,17 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
             </filter>
           </defs>
 
-          {/* LINHAS DE GRADE HORIZONTAIS */}
           {yTicks.map((tick, i) => (
             <g key={i} className="vg-trend-grid-line">
               <line x1={paddingX} y1={tick.y} x2={width - paddingX} y2={tick.y} strokeDasharray="3 4" />
               <text x={paddingX - 10} y={tick.y + 4} textAnchor="end" className="vg-trend-axis-text">
-                {metric === 'pontualidade' ? `${Math.round(tick.val)}%` : tick.val.toLocaleString('pt-BR')}
+                {metric === 'pontualidade' ? `${Math.round(tick.val)}%` : Math.round(tick.val).toLocaleString('pt-BR')}
               </text>
             </g>
           ))}
 
-          {/* ÁREA GRADIENTE */}
           <path d={areaD} fill="url(#trendGradient)" />
 
-          {/* LINHA PRINCIPAL DA TENDÊNCIA */}
           <path
             d={pathD}
             fill="none"
@@ -350,7 +413,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
             filter="url(#lineGlow)"
           />
 
-          {/* LINHA VERTICAL DE GUIA (HOVER) */}
           {activePoint && (
             <line
               x1={activePoint.x}
@@ -364,7 +426,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
             />
           )}
 
-          {/* PONTOS DE DADOS INTERATIVOS */}
           {points.map((pt, i) => {
             const isHovered = hoveredIdx === i;
             return (
@@ -378,10 +439,8 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
                 role="button"
                 aria-label={`${pt.data.fullDay}: ${metricConfig.format(pt.val)} ${metricConfig.unit}`}
               >
-                {/* Zona de clique invisível ampliada */}
                 <circle cx={pt.x} cy={pt.y} r="18" fill="transparent" />
 
-                {/* Halo pulsante no ponto selecionado */}
                 {isHovered && (
                   <circle
                     cx={pt.x}
@@ -393,7 +452,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
                   />
                 )}
 
-                {/* Círculo externo */}
                 <circle
                   cx={pt.x}
                   cy={pt.y}
@@ -404,7 +462,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
                   style={{ transition: 'all 0.15s ease' }}
                 />
 
-                {/* Rótulo do dia da semana abaixo do eixo */}
                 <text
                   x={pt.x}
                   y={paddingTop + chartH + 20}
@@ -418,7 +475,6 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
           })}
         </svg>
 
-        {/* TOOLTIP FLUTUANTE INFORMATIVO */}
         {activePoint && (
           <div
             className="vg-trend-floating-tooltip"
@@ -429,7 +485,9 @@ export const AdminTrendChart: React.FC<AdminTrendChartProps> = ({ isDarkMode = f
           >
             <div className="vg-trend-tooltip-header">
               <span className="vg-trend-tooltip-day">{activePoint.data.fullDay}</span>
-              <span className="vg-trend-tooltip-trips">{activePoint.data.viagens} viagens</span>
+              <span className="vg-trend-tooltip-trips">
+                {activePoint.data.viagens} {activePoint.data.viagens === 1 ? 'viagem' : 'viagens'}
+              </span>
             </div>
             <div className="vg-trend-tooltip-body">
               <strong className="vg-trend-tooltip-main-val">
