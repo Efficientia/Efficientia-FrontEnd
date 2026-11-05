@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useFetchData } from '../../hooks/useFetchData';
 import { caminhaoService } from '../../services/caminhaoService';
 import type { CaminhaoResponse, TipoVeiculo, StatusUsoCaminhao } from '../../types/frota';
+import type { FuncionarioEmpresaResponse } from '../../types/funcionario';
 import { AuthenticatedLayout } from '../../components/Layout/AuthenticatedLayout';
 import {
   NavFrotaIcon,
@@ -18,28 +20,36 @@ import {
   EyeIcon,
   InfoIcon,
 } from '../../components/icons';
+import {
+  belongsToTenant,
+  readTenantStorage,
+  resolveCurrentTenant,
+  writeTenantStorage,
+  type TenantIdentity,
+} from '../../utils/tenantScope';
 import './Frota.css';
 
 const FLEET_STORAGE_KEY = 'efficientia_frota_v3';
 
-function getStoredDrivers(): { id: number; nome: string }[] {
-  try {
-    const stored = localStorage.getItem('efficientia_colaboradores_v3');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((c) => c.tipo === 'motorista' && c.ativo !== false)
-          .map((c) => ({ id: c.id, nome: c.nome }));
-      }
-    }
-  } catch {
-    // Fallback
+function getStoredDriversForTenant(tenant: TenantIdentity): { id: number; nome: string }[] {
+  const stored = readTenantStorage<FuncionarioEmpresaResponse>(
+    'efficientia_colaboradores_v3',
+    tenant,
+    []
+  );
+  const drivers = stored
+    .filter((c) => c.tipo === 'motorista' && c.ativo !== false)
+    .map((c) => ({ id: c.id, nome: c.nome }));
+
+  if (drivers.length > 0) return drivers;
+
+  if (tenant.isPrimaryDemoTenant) {
+    return [
+      { id: 102, nome: 'Jonas Ribeiro' },
+      { id: 103, nome: 'Marcos Tavares' },
+    ];
   }
-  return [
-    { id: 102, nome: 'Jonas Ribeiro' },
-    { id: 103, nome: 'Marcos Tavares' },
-  ];
+  return [];
 }
 
 function formatKm(km: number | null | undefined): string {
@@ -268,6 +278,9 @@ const DEFAULT_FLEET: CaminhaoResponse[] = [
 export function Frota() {
   const { empresa, user, roles } = useAuth();
 
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
+  const empresaId = tenant.empresaId;
+
   const isAnalista = useMemo(() => {
     const rolesList = (roles || []).map((r) => r.toUpperCase());
     const isExplicitAdmin = rolesList.some((r) =>
@@ -282,73 +295,78 @@ export function Frota() {
   }, [roles, user]);
 
   const canEdit = !isAnalista;
+  const [searchParams] = useSearchParams();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') || '');
   const [tipoFiltro, setTipoFiltro] = useState<'TODOS' | 'CONJUNTO' | 'CAVALO' | 'CARRETA'>('TODOS');
-  const [statusFiltro, setStatusFiltro] = useState<'TODOS' | 'DISPONIVEL' | 'EM_USO' | 'MANUTENCAO' | 'INATIVOS'>('TODOS');
+  const [statusFiltro, setStatusFiltro] = useState<
+    'TODOS' | 'DISPONIVEL' | 'EM_USO' | 'MANUTENCAO' | 'INATIVOS'
+  >('TODOS');
 
-  // Estado Local Persistido
-  const [localFleet, setLocalFleet] = useState<CaminhaoResponse[]>(() => {
-    try {
-      const stored = localStorage.getItem(FLEET_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as CaminhaoResponse[];
-        }
-      }
-    } catch {
-      // Ignora erro de parse
-    }
-    try {
-      localStorage.setItem(FLEET_STORAGE_KEY, JSON.stringify(DEFAULT_FLEET));
-    } catch {
-      // Fallback
-    }
-    return DEFAULT_FLEET;
-  });
+  // Estado Local Persistido isolado por empresa
+  const [localFleet, setLocalFleet] = useState<CaminhaoResponse[]>(() =>
+    readTenantStorage<CaminhaoResponse>(FLEET_STORAGE_KEY, tenant, DEFAULT_FLEET)
+  );
 
-  const empresaId = empresa?.id;
-
-  // Consulta à API remota com fallback resiliente
+  // Consulta à API remota com fallback resiliente e filtro por empresaId
   const fetchFleet = useCallback(
     async (signal: AbortSignal) => {
       if (!empresaId) return [];
       try {
         const response = await caminhaoService.listar({ empresaId }, signal);
         if (Array.isArray(response) && response.length > 0) {
-          return response;
+          return response.filter((v) => belongsToTenant(v, tenant, { allowUnscoped: false }));
         }
       } catch {
         // Fallback silencioso
       }
       return [];
     },
-    [empresaId]
+    [empresaId, tenant]
   );
 
   const { data: remoteFleet, isLoading, refetch } = useFetchData(fetchFleet);
 
-  // Lista unificada
+  // Lista unificada estritamente isolada para o tenant atual
   const allFleet = useMemo(() => {
+    const scopedLocal = localFleet.filter((v) =>
+      belongsToTenant(v, tenant, { allowUnscoped: false })
+    );
     if (Array.isArray(remoteFleet) && remoteFleet.length > 0) {
-      return remoteFleet;
+      const merged = [...scopedLocal];
+      remoteFleet
+        .filter((v) => belongsToTenant(v, tenant, { allowUnscoped: false }))
+        .forEach((remote) => {
+          if (
+            !merged.some(
+              (item) =>
+                item.id === remote.id ||
+                item.placa.toUpperCase() === (remote.placa || '').toUpperCase()
+            )
+          ) {
+            merged.push({ ...remote, empresaId: tenant.empresaId });
+          }
+        });
+      return merged;
     }
-    return localFleet;
-  }, [remoteFleet, localFleet]);
+    return scopedLocal;
+  }, [remoteFleet, localFleet, tenant]);
 
-  // Função para sincronizar e persistir
-  const persistFleet = (updatedList: CaminhaoResponse[]) => {
-    setLocalFleet(updatedList);
-    try {
-      localStorage.setItem(FLEET_STORAGE_KEY, JSON.stringify(updatedList));
-    } catch {
-      // Fallback
-    }
-  };
+  // Função para sincronizar e persistir na chave isolada da empresa
+  const persistFleet = useCallback(
+    (updatedList: CaminhaoResponse[]) => {
+      const stamped = updatedList.map((v) => ({
+        ...v,
+        empresaId: tenant.empresaId,
+      }));
+      setLocalFleet(stamped);
+      writeTenantStorage(FLEET_STORAGE_KEY, tenant, stamped);
+    },
+    [tenant]
+  );
 
-  // Motoristas disponíveis para vinculação
-  const [driversList] = useState<{ id: number; nome: string }[]>(getStoredDrivers);
+  // Motoristas disponíveis para vinculação exclusivamente desta empresa
+  const driversList = useMemo(() => getStoredDriversForTenant(tenant), [tenant]);
 
   // Estados dos Modais
   const [showModal, setShowModal] = useState(false);
@@ -539,10 +557,14 @@ export function Frota() {
 
     if (empresaId) {
       try {
-        await caminhaoService.atualizar(vehicle.id, {
-          statusUso: nextStatus,
-          ativo: nextAtivo,
-        }, vehicle.tipo as TipoVeiculo);
+        await caminhaoService.atualizar(
+          vehicle.id,
+          {
+            statusUso: nextStatus,
+            ativo: nextAtivo,
+          },
+          vehicle.tipo as TipoVeiculo
+        );
       } catch {
         // Fallback
       }
@@ -570,7 +592,7 @@ export function Frota() {
       tipo: formTipo,
       placa: cleanPlaca,
       placaCarreta: cleanCarreta,
-      empresaId: empresaId || 1,
+      empresaId: tenant.empresaId,
       marca: formMarca.trim() || null,
       modelo: formModelo.trim() || null,
       anoFabricacao: formAno ? parseInt(formAno, 10) : null,
@@ -630,7 +652,7 @@ export function Frota() {
               tipoCarreta: formTipo !== 'CAVALO' ? formTipoCarreta : null,
               kmAcumulado: formKm ? parseInt(formKm, 10) : null,
               dataVencimentoInspecao: formInspecao || null,
-              empresaId,
+              empresaId: tenant.empresaId,
               ativo: formAtivo,
             });
           } catch {

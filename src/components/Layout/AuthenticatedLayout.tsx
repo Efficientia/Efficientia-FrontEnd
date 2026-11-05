@@ -52,7 +52,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   const location = useLocation();
   const { user, empresa, logout, roles } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -67,7 +66,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
 
   const pathname = location.pathname;
 
@@ -88,7 +86,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   const roleTitle = user?.cargo || (isAnalista ? 'Analista de bem-estar animal' : 'Administrador');
 
   const handleLogout = () => {
-    setShowProfileMenu(false);
     logout();
     navigate('/login', { replace: true });
   };
@@ -188,8 +185,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
 
           {headerRight}
 
-
-
           <button
             type="button"
             className="layout-icon-btn"
@@ -209,69 +204,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
           >
             <NotificationBadgeIcon size={20} />
           </button>
-
-          {/* Avatar com menu dropdown de perfil */}
-          <div className="layout-avatar-container">
-            <button
-              type="button"
-              className="layout-avatar-btn"
-              onClick={() => setShowProfileMenu((prev) => !prev)}
-              aria-expanded={showProfileMenu}
-              aria-haspopup="true"
-              title={`Perfil: ${displayName}`}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} className="layout-user-photo" />
-              ) : (
-                <GenericUserAvatar size={38} name={displayName} />
-              )}
-            </button>
-
-            {showProfileMenu && (
-              <div className="layout-profile-dropdown" role="menu">
-                <div className="layout-profile-header">
-                  <strong>{displayName}</strong>
-                  <span>{displayRole}</span>
-                  <small>{companyName}</small>
-                </div>
-                <div className="layout-profile-divider" />
-                <button
-                  type="button"
-                  className="layout-profile-item"
-                  onClick={() => {
-                    setShowProfileMenu(false);
-                    navigate('/configuracao');
-                  }}
-                  role="menuitem"
-                >
-                  <NavConfiguracoesIcon size={16} />
-                  <span>Configurações</span>
-                </button>
-                <a
-                  href={mailtoSupportUrl}
-                  className="layout-profile-item"
-                  role="menuitem"
-                  onClick={() => setShowProfileMenu(false)}
-                >
-                  <NavSuporteIcon size={16} />
-                  <span>Ajuda & Suporte</span>
-                </a>
-                <div className="layout-profile-divider" />
-                <button
-                  type="button"
-                  className="layout-profile-item layout-profile-logout"
-                  onClick={() => {
-                    setShowProfileMenu(false);
-                    logout();
-                    navigate('/login', { replace: true });
-                  }}
-                  role="menuitem"
-                >
-                  <span>Sair da conta</span>
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </header>
 
@@ -420,8 +352,8 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
                   type="button"
                   className="layout-sidebar-avatar-btn"
                   title={`${displayName} • ${companyName}`}
-                  onClick={() => setShowProfileMenu((prev) => !prev)}
-                  aria-label="Abrir menu de perfil"
+                  onClick={() => navigate('/configuracao')}
+                  aria-label="Abrir configurações do perfil"
                 >
                   <span className="layout-sidebar-avatar-slot">
                     {avatarUrl ? (
