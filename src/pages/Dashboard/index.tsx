@@ -9,6 +9,21 @@ import { funcionarioService } from '../../services/funcionarioService';
 import { relatorioService } from '../../services/relatorioService';
 import { redisChartService } from '../../services/redisChartService';
 import type { RelatorioViagemResponse } from '../../types/relatorio';
+import type { FuncionarioEmpresaResponse } from '../../types/funcionario';
+import type { CaminhaoResponse } from '../../types/frota';
+import {
+  belongsToTenant,
+  filterReportsByTenant,
+  readTenantStorage,
+  resolveCurrentTenant,
+} from '../../utils/tenantScope';
+import {
+  DEMO_COLLABORATORS_SEED,
+  DEMO_FAZENDAS_SEED,
+  DEMO_FLEET_SEED,
+  DEMO_FRIGORIFICOS_SEED,
+} from '../../utils/tenantSeeds';
+import { downloadRouteReportPdf } from '../../utils/routeReportPdf';
 import {
   buildAlerts,
   buildAnalysisQueue,
@@ -22,9 +37,7 @@ import {
   totalAnimaisDoRelatorio,
   totalsFromSeries,
   type AlertItem,
-  type AnalysisQueueItem,
   type ChartDayBar,
-  type OngoingRouteItem,
 } from './dashboardMetrics';
 
 type KpiPeriod = 'esta_semana' | 'semana_anterior' | 'mes_atual' | 'ultimos_30_dias';
@@ -61,146 +74,6 @@ import './AdminDashboardCharts.css';
 
 const PAGE_SIZE = 20;
 
-/* Mockups de fallback estritamente idênticos aos protótipos de referência */
-const VOLUME_DESEMBARQUE_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 1250, heightPct: 40, highlight: false },
-  { day: 'Seg', value: 3000, heightPct: 96, highlight: false },
-  { day: 'Ter', value: 2200, heightPct: 71, highlight: false },
-  { day: 'Qua', value: 3050, heightPct: 98, highlight: false },
-  { day: 'Qui', value: 2600, heightPct: 84, highlight: false },
-  { day: 'Sex', value: 2350, heightPct: 75, highlight: true },
-  { day: 'Sáb', value: 1800, heightPct: 57, highlight: false },
-];
-
-const VOLUME_EMBARQUE_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 260, heightPct: 28, highlight: false },
-  { day: 'Seg', value: 560, heightPct: 62, highlight: false },
-  { day: 'Ter', value: 420, heightPct: 47, highlight: false },
-  { day: 'Qua', value: 790, heightPct: 88, highlight: false },
-  { day: 'Qui', value: 710, heightPct: 79, highlight: false },
-  { day: 'Sex', value: 900, heightPct: 100, highlight: true },
-  { day: 'Sáb', value: 640, heightPct: 71, highlight: false },
-];
-
-const MORTES_REGISTRADAS_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 1, heightPct: 14, highlight: false },
-  { day: 'Seg', value: 3, heightPct: 30, highlight: false },
-  { day: 'Ter', value: 2, heightPct: 21, highlight: false },
-  { day: 'Qua', value: 5, heightPct: 50, highlight: false },
-  { day: 'Qui', value: 3, heightPct: 34, highlight: false },
-  { day: 'Sex', value: 6, heightPct: 62, highlight: true },
-  { day: 'Sáb', value: 2, heightPct: 25, highlight: false },
-];
-
-const ANOMALIAS_ETAPA_BARS: readonly ChartDayBar[] = [
-  { day: 'Dom', value: 5, heightPct: 44, highlight: false },
-  { day: 'Seg', value: 9, heightPct: 74, highlight: false },
-  { day: 'Ter', value: 4, heightPct: 38, highlight: false },
-  { day: 'Qua', value: 10, heightPct: 84, highlight: false },
-  { day: 'Qui', value: 6, heightPct: 54, highlight: false },
-  { day: 'Sex', value: 11, heightPct: 94, highlight: true },
-  { day: 'Sáb', value: 6, heightPct: 47, highlight: false },
-];
-
-const DEFAULT_QUEUE_ITEMS: readonly AnalysisQueueItem[] = [
-  {
-    id: 2041,
-    code: 'RR-2041',
-    gta: 'MS-0398471',
-    driver: 'Jonas Ribeiro',
-    plate: 'LKD-2B45',
-    route: 'Santa Clara → Campo Grande',
-    status: 'Pendente',
-  },
-  {
-    id: 2040,
-    code: 'RR-2040',
-    gta: 'MT-0114558',
-    driver: 'Cleiton Alves',
-    plate: 'QAP-3J88',
-    route: 'Boa Vista → Rondonópolis',
-    status: 'Em análise',
-  },
-  {
-    id: 2038,
-    code: 'RR-2038',
-    gta: 'GO-0881923',
-    driver: 'Adriano Souza',
-    plate: 'LKD-2B45',
-    route: 'Fazenda Rio Verde → Rio Verde',
-    status: 'Reprovado',
-  },
-  {
-    id: 2039,
-    code: 'RR-2039',
-    gta: 'MS-0229104',
-    driver: 'Marcos Tavares',
-    plate: 'BRA-2E19',
-    route: 'Três Irmãos → Anápolis',
-    status: 'Aprovado',
-  },
-  {
-    id: 2036,
-    code: 'RR-2036',
-    gta: 'Sem GTA',
-    driver: 'Cleiton Alves',
-    plate: 'BRL-1920',
-    route: 'Rascunho de diário',
-    status: 'Pendente',
-  },
-];
-
-const ALERT_ITEMS: readonly AlertItem[] = [
-  {
-    id: 'al-1',
-    title: 'Sirene de ré com falha',
-    subtitle: 'Placa LKD-2B45 • bloqueio de rota sugerido',
-    severity: 'bloqueio',
-  },
-  {
-    id: 'al-2',
-    title: 'CNH vencida',
-    subtitle: 'Adriano Souza • motorista bloqueado',
-    severity: 'bloqueio',
-  },
-  {
-    id: 'al-3',
-    title: '2 mortes sem laudo',
-    subtitle: 'Diário RR-2038 • reprovado na auditoria',
-    severity: 'alerta',
-  },
-  {
-    id: 'al-4',
-    title: 'Inspeção a vencer',
-    subtitle: 'Placa QAP-3J88 • em 9 dias',
-    severity: 'alerta',
-  },
-];
-
-const ONGOING_ROUTES: readonly OngoingRouteItem[] = [
-  {
-    id: 1,
-    driver: 'Jonas Ribeiro',
-    route: 'Santa Clara → Campo Grande',
-    progressPct: 62,
-    stage: 'Transporte',
-  },
-  {
-    id: 2,
-    driver: 'Marcos Tavares',
-    route: 'Três Irmãos → Anápolis',
-    progressPct: 28,
-    stage: 'Embarque',
-  },
-  {
-    id: 3,
-    driver: 'Wesley Prado',
-    route: 'Boa Vista → Rondonópolis',
-    progressPct: 84,
-    stage: 'Desembarque',
-  },
-];
-
 interface AuditHistoryItem {
   readonly id: string;
   readonly code: string;
@@ -208,30 +81,6 @@ interface AuditHistoryItem {
   readonly reason: string;
   readonly timestamp: string;
 }
-
-const DEFAULT_AUDIT_HISTORY: readonly AuditHistoryItem[] = [
-  {
-    id: 'aud-1',
-    code: 'RR-2038',
-    status: 'Reprovado',
-    reason: '2 mortes sem laudo',
-    timestamp: '08/set 11:20',
-  },
-  {
-    id: 'aud-2',
-    code: 'RR-2039',
-    status: 'Aprovado',
-    reason: 'Sem anomalias • 150 bovinos',
-    timestamp: '08/set 12:05',
-  },
-  {
-    id: 'aud-3',
-    code: 'RR-2037',
-    status: 'Com ressalva',
-    reason: 'Atraso no desembarque',
-    timestamp: '07/set 16:40',
-  },
-];
 
 function renderValue(value: string | number | null): string {
   return value === null || value === '' ? '—' : String(value);
@@ -250,10 +99,26 @@ function ReportRow({
   readonly resolveFrigorifico?: (id: number | null | undefined, fallbackName?: string | null) => string;
   readonly onAudit?: (report: RelatorioViagemResponse) => void;
 }) {
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const statusStr = String(report.status || 'pendente').toLowerCase();
   const driverName = resolveDriver ? resolveDriver(report.motoristaId) : renderValue(report.motoristaId);
   const farmName = resolveFazenda ? resolveFazenda(report.fazendaId, report.nomeOrigem) : (report.nomeOrigem || renderValue(report.fazendaId));
   const fridgeName = resolveFrigorifico ? resolveFrigorifico(report.unidadeFrigorificaId, report.nomeDestino) : (report.nomeDestino || renderValue(report.unidadeFrigorificaId));
+
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      await downloadRouteReportPdf(report.id, {
+        report: {
+          ...report,
+          nomeOrigem: farmName !== '—' ? farmName : report.nomeOrigem,
+          nomeDestino: fridgeName !== '—' ? fridgeName : report.nomeDestino,
+        },
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   return (
     <tr>
@@ -267,15 +132,28 @@ function ReportRow({
       <td>{farmName}</td>
       <td>{fridgeName}</td>
       <td>
-        <button
-          type="button"
-          className="vg-analyze-link"
-          onClick={() => onAudit?.(report)}
-          aria-label={`Auditar relatório GTA ${report.numeroGta ?? report.id}`}
-        >
-          <span>Auditar</span>
-          <ArrowRightIcon size={14} aria-hidden="true" />
-        </button>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            className="vg-analyze-link"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            title="Baixar PDF do relatório (formato idêntico ao mobile)"
+            aria-label={`Baixar PDF do relatório GTA ${report.numeroGta ?? report.id}`}
+          >
+            <ExportIcon size={13} aria-hidden="true" />
+            <span>{downloadingPdf ? 'Gerando...' : 'PDF'}</span>
+          </button>
+          <button
+            type="button"
+            className="vg-analyze-link"
+            onClick={() => onAudit?.(report)}
+            aria-label={`Auditar relatório GTA ${report.numeroGta ?? report.id}`}
+          >
+            <span>Auditar</span>
+            <ArrowRightIcon size={14} aria-hidden="true" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -322,32 +200,92 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     setSelectedAuditReportPartial(null);
   };
 
-  const empresaId = empresa?.id;
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
+  const empresaId = tenant.empresaId;
 
-  // Chamadas de API com carregamento assíncrono
+  // Coleções locais isoladas por empresa (sincronizadas com Colaboradores, Frota e Fazendas/Unidades)
+  const localEmployees = useMemo<FuncionarioEmpresaResponse[]>(
+    () => readTenantStorage<FuncionarioEmpresaResponse>('efficientia_colaboradores_v3', tenant, DEMO_COLLABORATORS_SEED),
+    [tenant]
+  );
+  const localVehicles = useMemo<CaminhaoResponse[]>(
+    () => readTenantStorage<CaminhaoResponse>('efficientia_frota_v3', tenant, DEMO_FLEET_SEED),
+    [tenant]
+  );
+  const localFazendas = useMemo<Array<{ id: number; nome: string; ativo?: boolean; empresaId?: number; codigoEmpresa?: string | null }>>(
+    () => readTenantStorage<{ id: number; nome: string; ativo?: boolean; empresaId?: number; codigoEmpresa?: string | null }>('efficientia_fazendas_v4', tenant, DEMO_FAZENDAS_SEED),
+    [tenant]
+  );
+  const localUnidades = useMemo<Array<{ id: number; nome: string; ativo?: boolean; empresaId?: number; codigoEmpresa?: string | null }>>(
+    () => readTenantStorage<{ id: number; nome: string; ativo?: boolean; empresaId?: number; codigoEmpresa?: string | null }>('efficientia_frigorificos_v4', tenant, DEMO_FRIGORIFICOS_SEED),
+    [tenant]
+  );
+
+  // Chamadas de API com carregamento assíncrono e isolamento por empresaId
   const fetchPage = useCallback(
-    (signal: AbortSignal) => relatorioService.listar(pagina, PAGE_SIZE, signal),
-    [pagina]
+    (signal: AbortSignal) => relatorioService.listar(pagina, PAGE_SIZE, signal, empresaId),
+    [pagina, empresaId]
   );
   const { data, error, isError, isLoading, isSuccess, refetch } = useFetchData(fetchPage);
 
-  const { data: allReports, refetch: refetchAll } = useFetchData(
-    useCallback((signal: AbortSignal) => relatorioService.listarTodos(signal), [])
+  const { data: rawAllReports, refetch: refetchAll } = useFetchData(
+    useCallback((signal: AbortSignal) => relatorioService.listarTodos(signal, 100, empresaId), [empresaId])
   );
-  const { data: vehicles } = useFetchData(
+  const { data: rawVehicles } = useFetchData(
     useCallback(
       (signal: AbortSignal) =>
         empresaId ? caminhaoService.listar({ empresaId }, signal) : Promise.resolve([]),
       [empresaId]
     )
   );
-  const { data: employees } = useFetchData(
+  const { data: rawEmployees } = useFetchData(
     useCallback(
       (signal: AbortSignal) =>
         empresaId ? funcionarioService.listarFuncionarios(empresaId, signal) : Promise.resolve([]),
       [empresaId]
     )
   );
+
+  const employees = useMemo<FuncionarioEmpresaResponse[]>(() => {
+    const map = new Map<number, FuncionarioEmpresaResponse>();
+    localEmployees.forEach((emp) => map.set(emp.id, emp));
+    (rawEmployees ?? []).forEach((emp) => {
+      if (emp && typeof emp.id === 'number' && belongsToTenant(emp, tenant, { allowUnscoped: false })) {
+        const existing = map.get(emp.id);
+        map.set(emp.id, { ...emp, ...existing, id: emp.id });
+      }
+    });
+    if (map.size === 0 && user) {
+      const currentUserId = user.id || 1;
+      map.set(currentUserId, {
+        id: currentUserId,
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
+        tipo: 'tipo' in user && user.tipo ? user.tipo : 'administrador',
+        nome: user.nome || empresa?.nomeFantasia || 'Administrador Principal',
+        cpf: ('cpf' in user && (user as { cpf?: string }).cpf) || '000.000.000-00',
+        email: user.email || 'admin@empresa.com.br',
+        telefone: user.telefone || '',
+        cargo: user.cargo || 'Administrador',
+        ativo: true,
+        criadoEm: new Date().toISOString(),
+        isCurrentUser: true,
+      });
+    }
+    return Array.from(map.values());
+  }, [localEmployees, rawEmployees, tenant, user, empresa]);
+
+  const vehicles = useMemo<CaminhaoResponse[]>(() => {
+    const map = new Map<number, CaminhaoResponse>();
+    localVehicles.forEach((veh) => map.set(veh.id, veh));
+    (rawVehicles ?? []).forEach((veh) => {
+      if (veh && typeof veh.id === 'number' && belongsToTenant(veh, tenant, { allowUnscoped: false })) {
+        const existing = map.get(veh.id);
+        map.set(veh.id, { ...veh, ...existing, id: veh.id });
+      }
+    });
+    return Array.from(map.values());
+  }, [localVehicles, rawVehicles, tenant]);
 
   const isAnalista = useMemo(() => {
     const rolesList = roles.map((r) => r.toUpperCase());
@@ -383,63 +321,100 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
 
 
 
+  const tenantFilterDeps = useMemo(() => {
+    const driverIds = new Set<number>(employees.map((e) => e.id));
+    const vehicleIds = new Set<number>(vehicles.map((v) => v.id));
+    const fazendaIds = new Set<number>(localFazendas.map((f) => f.id));
+    const unidadeIds = new Set<number>(localUnidades.map((u) => u.id));
+    return { driverIds, vehicleIds, fazendaIds, unidadeIds };
+  }, [employees, vehicles, localFazendas, localUnidades]);
+
+  const scopedPageReports = useMemo(
+    () => filterReportsByTenant(data?.itens ?? [], tenant, tenantFilterDeps),
+    [data?.itens, tenant, tenantFilterDeps]
+  );
+
+  const allReports = useMemo(
+    () => filterReportsByTenant(rawAllReports ?? [], tenant, tenantFilterDeps),
+    [rawAllReports, tenant, tenantFilterDeps]
+  );
+
   const [filters, dispatchFilters] = useReducer(reportFiltersReducer, INITIAL_REPORT_FILTERS);
   const filteredReports = useMemo(
-    () => filterReports(data?.itens ?? [], filters),
-    [data?.itens, filters]
+    () => filterReports(scopedPageReports, filters),
+    [scopedPageReports, filters]
   );
   const statusOptions = useMemo(
-    () => [...new Set(data?.itens.map((report) => report.status) ?? [])].sort(),
-    [data?.itens]
+    () => [...new Set(scopedPageReports.map((report) => report.status) ?? [])].sort(),
+    [scopedPageReports]
   );
   const hasActiveFilters = filters.query.trim().length > 0 || filters.status.length > 0;
 
   const canGoBack = pagina > 0;
   const canGoForward = data !== null && pagina + 1 < data.totalPaginas;
 
-  // Resolução de dados e métricas com fallbacks elegantes ao protótipo
-  const reportSource = useMemo(() => allReports ?? data?.itens ?? [], [allReports, data?.itens]);
+  // Resolução de dados e métricas com fallbacks elegantes ao protótipo (restritos ao tenant)
+  const reportSource = useMemo(
+    () => (allReports.length > 0 ? allReports : scopedPageReports),
+    [allReports, scopedPageReports]
+  );
   const series = useMemo(() => buildWeeklySeries(reportSource, startOfWeek(new Date())), [reportSource]);
   const liveTotals = useMemo(() => totalsFromSeries(series), [series]);
 
-    const fazendaResolver = useMemo(() => {
+  const fazendaResolver = useMemo(() => {
     const map = new Map<number, string>();
-    map.set(1, 'Fazenda Santa Clara');
-    map.set(2, 'Fazenda Três Irmãos');
-    map.set(3, 'Fazenda Boa Vista');
-    map.set(4, 'Fazenda Rio Verde');
-    (fazendasData?.itens ?? []).forEach((f) => map.set(f.id, f.nome));
+    if (tenant.isPrimaryDemoTenant) {
+      map.set(1, 'Fazenda Santa Clara');
+      map.set(2, 'Fazenda Três Irmãos');
+      map.set(3, 'Fazenda Boa Vista');
+      map.set(4, 'Fazenda Rio Verde');
+    }
+    localFazendas.forEach((f) => map.set(f.id, f.nome));
+    (fazendasData?.itens ?? []).forEach((f) => {
+      if (belongsToTenant(f as { empresaId?: number | null }, tenant, { allowUnscoped: tenant.isPrimaryDemoTenant })) {
+        map.set(f.id, f.nome);
+      }
+    });
     return (id: number | null | undefined, fallbackName?: string | null) => {
       if (fallbackName && fallbackName.trim()) return fallbackName;
       if (!id) return 'Fazenda não informada';
       return map.get(id) ?? `Fazenda #${id}`;
     };
-  }, [fazendasData]);
+  }, [fazendasData, localFazendas, tenant]);
 
   const frigorificoResolver = useMemo(() => {
     const map = new Map<number, string>();
-    map.set(1, 'Frigorífico Campo Grande SIF 101');
-    map.set(2, 'Frigorífico Anápolis SIF 204');
-    map.set(3, 'Frigorífico Rondonópolis SIF 308');
-    map.set(4, 'Frigorífico Rio Verde SIF 412');
-    (unidadesData?.itens ?? []).forEach((u) => map.set(u.id, u.nome));
+    if (tenant.isPrimaryDemoTenant) {
+      map.set(1, 'Frigorífico Campo Grande SIF 101');
+      map.set(2, 'Frigorífico Anápolis SIF 204');
+      map.set(3, 'Frigorífico Rondonópolis SIF 308');
+      map.set(4, 'Frigorífico Rio Verde SIF 412');
+    }
+    localUnidades.forEach((u) => map.set(u.id, u.nome));
+    (unidadesData?.itens ?? []).forEach((u) => {
+      if (belongsToTenant(u as { empresaId?: number | null }, tenant, { allowUnscoped: tenant.isPrimaryDemoTenant })) {
+        map.set(u.id, u.nome);
+      }
+    });
     return (id: number | null | undefined, fallbackName?: string | null) => {
       if (fallbackName && fallbackName.trim()) return fallbackName;
       if (!id) return 'Frigorífico não informado';
       return map.get(id) ?? `Frigorífico #${id}`;
     };
-  }, [unidadesData]);
+  }, [unidadesData, localUnidades, tenant]);
 
   const driverResolver = useMemo(() => {
     const names = new Map<number, string>();
-    names.set(1, 'Jonas Ribeiro');
-    names.set(2, 'Cleiton Alves');
-    names.set(3, 'Marcos Tavares');
-    names.set(4, 'Adriano Souza');
-    names.set(5, 'Wesley Prado');
+    if (tenant.isPrimaryDemoTenant) {
+      names.set(1, 'Jonas Ribeiro');
+      names.set(2, 'Cleiton Alves');
+      names.set(3, 'Marcos Tavares');
+      names.set(4, 'Adriano Souza');
+      names.set(5, 'Wesley Prado');
+    }
     (employees ?? []).forEach((employee) => names.set(employee.id, employee.nome));
     return (id: number | null | undefined) => (id ? names.get(id) ?? `Motorista #${id}` : 'Motorista não informado');
-  }, [employees]);
+  }, [employees, tenant.isPrimaryDemoTenant]);
 
   const liveQueue = useMemo(
     () => buildAnalysisQueue(reportSource, driverResolver),
@@ -454,20 +429,48 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     [reportSource, vehicles, driverResolver]
   );
 
-  // Big numbers: usa dados ao vivo se existirem, ou o valor fiel do protótipo
-  const totalDiariosVal = liveTotals.diarios > 0 ? liveTotals.diarios : 15;
-  const pendentesDiariosVal = liveTotals.pendentes > 0 ? liveTotals.pendentes : 8;
-  const totalBovinosVal =
-    liveTotals.bovinos > 0 ? liveTotals.bovinos.toLocaleString('pt-BR') : '4.299';
-  const mortosBovinosVal = liveTotals.mortos > 0 ? liveTotals.mortos : 67;
-  const taxaMortalidadeVal =
-    liveTotals.mortalidadePct !== null && liveTotals.bovinos > 0
-      ? formatPercent(liveTotals.mortalidadePct)
-      : '1,56%';
-  const anomaliasEmbarqueVal =
-    liveTotals.anomaliasEmbarque > 0 ? liveTotals.anomaliasEmbarque : 7;
-  const anomaliasDesembarqueVal =
-    liveTotals.anomaliasDesembarque > 0 ? liveTotals.anomaliasDesembarque : 4;
+  // Relatórios válidos (não excluídos) presentes nos Diários de Rota da empresa
+  const validReports = useMemo(
+    () =>
+      (reportSource ?? []).filter(
+        (r) => r && String(r.status ?? '').toLowerCase() !== 'excluido'
+      ),
+    [reportSource]
+  );
+
+  // Totais reais consolidados a partir dos relatórios existentes em Diários de Rota
+  const realReportTotals = useMemo(() => {
+    const diarios = validReports.length;
+    const pendentes = validReports.filter(
+      (r) => String(r.status ?? '').toLowerCase() === 'pendente'
+    ).length;
+    const bovinos = validReports.reduce((acc, r) => acc + totalAnimaisDoRelatorio(r), 0);
+    const mortos = validReports.reduce((acc, r) => acc + (r.quantidadeMorto ?? 0), 0);
+    const mortalidadePct = bovinos > 0 ? (mortos / bovinos) * 100 : 0;
+    const anomaliasEmbarque = validReports.reduce(
+      (acc, r) => acc + (r.anomaliasEmbarque?.length ?? 0),
+      0
+    );
+    const anomaliasDesembarque = validReports.reduce(
+      (acc, r) => acc + (r.anomaliasDesembarque?.length ?? 0),
+      0
+    );
+    return {
+      diarios,
+      pendentes,
+      bovinos,
+      mortos,
+      mortalidadePct,
+      anomaliasEmbarque,
+      anomaliasDesembarque,
+    };
+  }, [validReports]);
+
+  const totalDiariosVal =
+    liveTotals.diarios > 0 ? liveTotals.diarios : realReportTotals.diarios;
+  const totalBovinosVal = (
+    liveTotals.bovinos > 0 ? liveTotals.bovinos : realReportTotals.bovinos
+  ).toLocaleString('pt-BR');
 
   const [kpiPeriods, setKpiPeriods] = useState<Record<'diarios' | 'bovinos' | 'mortalidade' | 'anomalias', KpiPeriod>>({
     diarios: 'esta_semana',
@@ -498,96 +501,56 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
         end = new Date(start.getTime() + 7 * DAY_MS - 1);
       }
 
-      const inRange = (reportSource ?? []).filter((r) => {
-        const s = String(r.status ?? '').toLowerCase();
-        if (s === 'excluido') return false;
+      const inRange = validReports.filter((r) => {
         const d = dataEmbarqueDe(r) || dataDesembarqueDe(r);
         return d && d >= start && d <= end;
       });
 
-      if (inRange.length > 0) {
+      const targetList = inRange.length > 0 ? inRange : validReports;
+
+      if (targetList.length === 0) {
         if (card === 'diarios') {
-          const total = inRange.length;
-          const pendentes = inRange.filter((r) => String(r.status ?? '').toLowerCase() === 'pendente').length;
-          return { primary: total, primaryDelta: '+15,0%', primaryDeltaTone: 'positive', secondary: pendentes };
+          return { primary: 0, secondary: 0 };
         }
         if (card === 'bovinos') {
-          const total = inRange.reduce((acc, r) => acc + totalAnimaisDoRelatorio(r), 0);
-          const mortos = inRange.reduce((acc, r) => acc + (r.quantidadeMorto ?? 0), 0);
-          return {
-            primary: total.toLocaleString('pt-BR'),
-            primaryDelta: '+12,0%',
-            primaryDeltaTone: 'positive',
-            secondary: mortos,
-            secondaryDelta: '+5,0%',
-            secondaryDeltaTone: 'negative',
-          };
+          return { primary: '0', secondary: 0 };
         }
         if (card === 'mortalidade') {
-          const totalBov = inRange.reduce((acc, r) => acc + totalAnimaisDoRelatorio(r), 0);
-          const mortos = inRange.reduce((acc, r) => acc + (r.quantidadeMorto ?? 0), 0);
-          const pct = totalBov > 0 ? (mortos / totalBov) * 100 : 0;
-          return {
-            primary: formatPercent(pct),
-            primaryDelta: pct > 1 ? '+0,5%' : '-0,2%',
-            primaryDeltaTone: pct > 1 ? 'negative' : 'positive',
-            secondary: '< 0,5%',
-          };
+          return { primary: '0,00%', secondary: '< 0,5%' };
         }
-        if (card === 'anomalias') {
-          const emb = inRange.reduce((acc, r) => acc + (r.anomaliasEmbarque?.length ?? 0), 0);
-          const des = inRange.reduce((acc, r) => acc + (r.anomaliasDesembarque?.length ?? 0), 0);
-          return {
-            primary: emb,
-            primaryDelta: '-2,0%',
-            primaryDeltaTone: 'positive',
-            secondary: des,
-            secondaryDelta: '-5,0%',
-            secondaryDeltaTone: 'positive',
-          };
-        }
+        return { primary: 0, secondary: 0 };
       }
 
-      const MOCK_PERIOD_DATA: Record<KpiPeriod, Record<'diarios' | 'bovinos' | 'mortalidade' | 'anomalias', KpiMetricValues>> = {
-        esta_semana: {
-          diarios: { primary: totalDiariosVal, primaryDelta: '+20,0%', primaryDeltaTone: 'positive', secondary: pendentesDiariosVal },
-          bovinos: { primary: totalBovinosVal, primaryDelta: '+12,0%', primaryDeltaTone: 'positive', secondary: mortosBovinosVal, secondaryDelta: '+5,0%', secondaryDeltaTone: 'negative' },
-          mortalidade: { primary: taxaMortalidadeVal, primaryDelta: '+2,0%', primaryDeltaTone: 'negative', secondary: '< 0,5%' },
-          anomalias: { primary: anomaliasEmbarqueVal, primaryDelta: '-2,0%', primaryDeltaTone: 'positive', secondary: anomaliasDesembarqueVal, secondaryDelta: '-5,0%', secondaryDeltaTone: 'positive' },
-        },
-        semana_anterior: {
-          diarios: { primary: 12, primaryDelta: '+9,1%', primaryDeltaTone: 'positive', secondary: 4 },
-          bovinos: { primary: '3.840', primaryDelta: '+8,5%', primaryDeltaTone: 'positive', secondary: 64, secondaryDelta: '-3,0%', secondaryDeltaTone: 'positive' },
-          mortalidade: { primary: '1,67%', primaryDelta: '-1,5%', primaryDeltaTone: 'positive', secondary: '< 0,5%' },
-          anomalias: { primary: 8, primaryDelta: '+5,0%', primaryDeltaTone: 'negative', secondary: 5, secondaryDelta: '+2,0%', secondaryDeltaTone: 'negative' },
-        },
-        mes_atual: {
-          diarios: { primary: 58, primaryDelta: '+15,4%', primaryDeltaTone: 'positive', secondary: 14 },
-          bovinos: { primary: '16.520', primaryDelta: '+14,2%', primaryDeltaTone: 'positive', secondary: 258, secondaryDelta: '+2,1%', secondaryDeltaTone: 'negative' },
-          mortalidade: { primary: '1,56%', primaryDelta: '+0,5%', primaryDeltaTone: 'neutral', secondary: '< 0,5%' },
-          anomalias: { primary: 29, primaryDelta: '-4,0%', primaryDeltaTone: 'positive', secondary: 18, secondaryDelta: '-6,0%', secondaryDeltaTone: 'positive' },
-        },
-        ultimos_30_dias: {
-          diarios: { primary: 64, primaryDelta: '+18,2%', primaryDeltaTone: 'positive', secondary: 16 },
-          bovinos: { primary: '18.240', primaryDelta: '+13,8%', primaryDeltaTone: 'positive', secondary: 285, secondaryDelta: '+1,8%', secondaryDeltaTone: 'negative' },
-          mortalidade: { primary: '1,56%', primaryDelta: '+0,8%', primaryDeltaTone: 'neutral', secondary: '< 0,5%' },
-          anomalias: { primary: 32, primaryDelta: '-3,5%', primaryDeltaTone: 'positive', secondary: 20, secondaryDelta: '-4,5%', secondaryDeltaTone: 'positive' },
-        },
+      if (card === 'diarios') {
+        const total = targetList.length;
+        const pendentes = targetList.filter((r) => String(r.status ?? '').toLowerCase() === 'pendente').length;
+        return { primary: total, secondary: pendentes };
+      }
+      if (card === 'bovinos') {
+        const total = targetList.reduce((acc, r) => acc + totalAnimaisDoRelatorio(r), 0);
+        const mortos = targetList.reduce((acc, r) => acc + (r.quantidadeMorto ?? 0), 0);
+        return {
+          primary: total.toLocaleString('pt-BR'),
+          secondary: mortos,
+        };
+      }
+      if (card === 'mortalidade') {
+        const totalBov = targetList.reduce((acc, r) => acc + totalAnimaisDoRelatorio(r), 0);
+        const mortos = targetList.reduce((acc, r) => acc + (r.quantidadeMorto ?? 0), 0);
+        const pct = totalBov > 0 ? (mortos / totalBov) * 100 : 0;
+        return {
+          primary: formatPercent(pct),
+          secondary: '< 0,5%',
+        };
+      }
+      const emb = targetList.reduce((acc, r) => acc + (r.anomaliasEmbarque?.length ?? 0), 0);
+      const des = targetList.reduce((acc, r) => acc + (r.anomaliasDesembarque?.length ?? 0), 0);
+      return {
+        primary: emb,
+        secondary: des,
       };
-
-      return MOCK_PERIOD_DATA[period][card];
     },
-    [
-      kpiPeriods,
-      reportSource,
-      totalDiariosVal,
-      pendentesDiariosVal,
-      totalBovinosVal,
-      mortosBovinosVal,
-      taxaMortalidadeVal,
-      anomaliasEmbarqueVal,
-      anomaliasDesembarqueVal,
-    ]
+    [kpiPeriods, validReports]
   );
 
   const diariosKpi = getKpiData('diarios');
@@ -600,12 +563,10 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     return `${s.getFullYear()}-W${Math.ceil((s.getDate() + 6) / 7)}`;
   }, []);
 
-  // Gráficos semanais: implementa Cache-Aside no Redis (TTL 3600s) com fallback visual aos protótipos
-  const hasLiveChartData = series.desembarque.some((v) => v > 0);
+  // Gráficos semanais sincronizados com os relatórios reais de Diários de Rota
   const chartBars = useMemo(() => {
-    const activeEmpresaId = empresaId ?? 'default';
+    const activeEmpresaId = `${empresaId ?? 'default'}_n${validReports.length}`;
 
-    // 1. Tenta recuperar do Redis Cache-Aside
     const cDesemb = redisChartService.getChartCache(activeEmpresaId, 'desembarque', currentWeekKey);
     const cEmbarq = redisChartService.getChartCache(activeEmpresaId, 'embarque', currentWeekKey);
     const cMortes = redisChartService.getChartCache(activeEmpresaId, 'mortes', currentWeekKey);
@@ -620,48 +581,31 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
       };
     }
 
-    let calculatedBars: {
-      desembarque: readonly ChartDayBar[];
-      embarque: readonly ChartDayBar[];
-      mortes: readonly ChartDayBar[];
-      anomalias: readonly ChartDayBar[];
+    const makeBars = (values: number[], ceiling: number): ChartDayBar[] =>
+      values.map((value, index) => ({
+        day: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][index],
+        value,
+        heightPct: ceiling && value > 0 ? Math.max(3, Math.round((value / ceiling) * 100)) : 0,
+        highlight: index === new Date().getDay(),
+      }));
+
+    const calculatedBars = {
+      desembarque: makeBars(series.desembarque, niceCeiling(Math.max(...series.desembarque, 1))),
+      embarque: makeBars(series.embarque, niceCeiling(Math.max(...series.embarque, 1))),
+      mortes: makeBars(series.mortes, niceCeiling(Math.max(...series.mortes, 1))),
+      anomalias: makeBars(
+        series.anomaliasEmbarque.map((val, i) => val + series.anomaliasDesembarque[i]),
+        niceCeiling(Math.max(...series.anomaliasEmbarque, ...series.anomaliasDesembarque, 1))
+      ),
     };
 
-    if (!hasLiveChartData) {
-      calculatedBars = {
-        desembarque: VOLUME_DESEMBARQUE_BARS,
-        embarque: VOLUME_EMBARQUE_BARS,
-        mortes: MORTES_REGISTRADAS_BARS,
-        anomalias: ANOMALIAS_ETAPA_BARS,
-      };
-    } else {
-      const makeBars = (values: number[], ceiling: number): ChartDayBar[] =>
-        values.map((value, index) => ({
-          day: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][index],
-          value,
-          heightPct: ceiling ? Math.max(3, Math.round((value / ceiling) * 100)) : 0,
-          highlight: index === new Date().getDay(),
-        }));
-
-      calculatedBars = {
-        desembarque: makeBars(series.desembarque, niceCeiling(Math.max(...series.desembarque, 1))),
-        embarque: makeBars(series.embarque, niceCeiling(Math.max(...series.embarque, 1))),
-        mortes: makeBars(series.mortes, niceCeiling(Math.max(...series.mortes, 1))),
-        anomalias: makeBars(
-          series.anomaliasEmbarque.map((val, i) => val + series.anomaliasDesembarque[i]),
-          niceCeiling(Math.max(...series.anomaliasEmbarque, ...series.anomaliasDesembarque, 1))
-        ),
-      };
-    }
-
-    // Persiste no Redis Cache-Aside
     redisChartService.setChartCache(activeEmpresaId, 'desembarque', currentWeekKey, calculatedBars.desembarque);
     redisChartService.setChartCache(activeEmpresaId, 'embarque', currentWeekKey, calculatedBars.embarque);
     redisChartService.setChartCache(activeEmpresaId, 'mortes', currentWeekKey, calculatedBars.mortes);
     redisChartService.setChartCache(activeEmpresaId, 'anomalias', currentWeekKey, calculatedBars.anomalias);
 
     return calculatedBars;
-  }, [currentWeekKey, empresaId, hasLiveChartData, series]);
+  }, [currentWeekKey, empresaId, series, validReports.length]);
 
   // Listas filtradas com busca
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -675,156 +619,53 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     bovinos: 'esta_semana',
   });
 
-  const totalFuncionarios = employees && employees.length > 0 ? employees.length : 48;
-  const motoristasCount = employees && employees.length > 0
-    ? employees.filter((e) => (e.cargo || '').toLowerCase().includes('motorista') || e.tipo === 'motorista').length
-    : 32;
+  const totalFuncionarios =
+    employees && employees.length > 0 ? employees.length : 1;
+  const motoristasCount =
+    employees && employees.length > 0
+      ? employees.filter((e) => (e.cargo || '').toLowerCase().includes('motorista') || e.tipo === 'motorista').length
+      : 0;
 
-  const totalCaminhoes = vehicles && vehicles.length > 0 ? vehicles.length : 28;
-  const emRotaCaminhoes = vehicles && vehicles.length > 0
-    ? vehicles.filter((v) => v.statusUso === 'EM_USO' || ('status' in v && (v as { status?: string }).status === 'EM_USO')).length
-    : 18;
+  const totalCaminhoes = vehicles ? vehicles.length : 0;
+  const emRotaCaminhoes =
+    vehicles && vehicles.length > 0
+      ? vehicles.filter((v) => v.statusUso === 'EM_USO' || ('status' in v && (v as { status?: string }).status === 'EM_USO')).length
+      : 0;
 
-  const totalFazendas = fazendasData?.total ?? 9;
-  const totalFrigorificos = unidadesData?.total ?? 5;
+  const totalFazendas = localFazendas.length;
+  const totalFrigorificos = localUnidades.length;
   const totalPolos = totalFazendas + totalFrigorificos;
 
   const getAdminKpiData = useCallback(
     (card: 'colaboradores' | 'frota' | 'polos' | 'bovinos'): KpiMetricValues => {
-      const period = adminKpiPeriods[card];
       switch (card) {
         case 'colaboradores': {
-          if (period === 'semana_anterior') {
-            return {
-              primary: Math.max(1, totalFuncionarios - 2),
-              primaryDelta: '+2 no mês',
-              primaryDeltaTone: 'positive',
-              secondary: Math.max(1, motoristasCount - 1),
-            };
-          }
-          if (period === 'mes_atual') {
-            return {
-              primary: totalFuncionarios,
-              primaryDelta: '+8,3%',
-              primaryDeltaTone: 'positive',
-              secondary: motoristasCount,
-            };
-          }
-          if (period === 'ultimos_30_dias') {
-            return {
-              primary: totalFuncionarios,
-              primaryDelta: '+10,5%',
-              primaryDeltaTone: 'positive',
-              secondary: motoristasCount,
-            };
-          }
           return {
             primary: totalFuncionarios,
-            primaryDelta: '+4 este mês',
-            primaryDeltaTone: 'positive',
             secondary: motoristasCount,
           };
         }
         case 'frota': {
-          if (period === 'semana_anterior') {
-            return {
-              primary: totalCaminhoes,
-              primaryDelta: '88% ativa',
-              primaryDeltaTone: 'positive',
-              secondary: Math.max(1, emRotaCaminhoes - 2),
-            };
-          }
-          if (period === 'mes_atual') {
-            return {
-              primary: totalCaminhoes,
-              primaryDelta: '+3 veículos',
-              primaryDeltaTone: 'positive',
-              secondary: emRotaCaminhoes,
-            };
-          }
-          if (period === 'ultimos_30_dias') {
-            return {
-              primary: totalCaminhoes,
-              primaryDelta: '94% operacional',
-              primaryDeltaTone: 'positive',
-              secondary: emRotaCaminhoes,
-            };
-          }
           return {
             primary: totalCaminhoes,
-            primaryDelta: '92% operacional',
-            primaryDeltaTone: 'positive',
             secondary: emRotaCaminhoes,
           };
         }
         case 'polos': {
-          if (period === 'semana_anterior') {
-            return {
-              primary: Math.max(1, totalPolos - 1),
-              primaryDelta: '+1 polo',
-              primaryDeltaTone: 'positive',
-              secondary: totalFrigorificos,
-            };
-          }
-          if (period === 'mes_atual') {
-            return {
-              primary: totalPolos,
-              primaryDelta: '100% homologados',
-              primaryDeltaTone: 'positive',
-              secondary: totalFrigorificos,
-            };
-          }
-          if (period === 'ultimos_30_dias') {
-            return {
-              primary: totalPolos,
-              primaryDelta: '+3 novos polos',
-              primaryDeltaTone: 'positive',
-              secondary: totalFrigorificos,
-            };
-          }
           return {
             primary: totalPolos,
-            primaryDelta: '+2 novos polos',
-            primaryDeltaTone: 'positive',
             secondary: totalFrigorificos,
           };
         }
         case 'bovinos': {
-          if (period === 'semana_anterior') {
-            return {
-              primary: '3.840',
-              primaryDelta: '+8,5%',
-              primaryDeltaTone: 'positive',
-              secondary: 12,
-            };
-          }
-          if (period === 'mes_atual') {
-            return {
-              primary: '16.520',
-              primaryDelta: '+14,2%',
-              primaryDeltaTone: 'positive',
-              secondary: 58,
-            };
-          }
-          if (period === 'ultimos_30_dias') {
-            return {
-              primary: '18.240',
-              primaryDelta: '+13,8%',
-              primaryDeltaTone: 'positive',
-              secondary: 64,
-            };
-          }
           return {
             primary: totalBovinosVal,
-            primaryDelta: '+12,0%',
-            primaryDeltaTone: 'positive',
             secondary: totalDiariosVal,
           };
         }
       }
     },
     [
-      adminKpiPeriods,
       totalFuncionarios,
       motoristasCount,
       totalCaminhoes,
@@ -857,8 +698,20 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
         info: emp.telefone || emp.email || 'Acesso ativo',
       }));
     }
-    return DEFAULT_TEAM_MEMBERS;
-  }, [employees, DEFAULT_TEAM_MEMBERS]);
+    if (tenant.isPrimaryDemoTenant) {
+      return DEFAULT_TEAM_MEMBERS;
+    }
+    return user
+      ? [
+          {
+            id: user.id || 1,
+            nome: user.nome,
+            cargo: 'cargo' in user && user.cargo ? user.cargo : 'Administrador',
+            info: user.email || 'Acesso ativo',
+          },
+        ]
+      : [];
+  }, [employees, DEFAULT_TEAM_MEMBERS, tenant.isPrimaryDemoTenant, user]);
 
   const visibleTeam = useMemo(() => {
     if (!normalizedSearch) return teamMembers;
@@ -870,32 +723,69 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     );
   }, [teamMembers, normalizedSearch]);
 
-  const ADMIN_ALERTS: readonly AlertItem[] = useMemo(() => [
-    {
-      id: 'adm-al-1',
-      title: 'Sirene de ré com falha',
-      subtitle: 'Placa LKD-2B45 • Manutenção preventiva necessária',
-      severity: 'bloqueio',
-    },
-    {
-      id: 'adm-al-2',
-      title: 'CNH a vencer em 12 dias',
-      subtitle: 'Adriano Souza • Categoria E',
-      severity: 'alerta',
-    },
-    {
-      id: 'adm-al-3',
-      title: 'Inspeção veicular preventiva',
-      subtitle: 'Placa QAP-3J88 • Vencimento em 9 dias',
-      severity: 'alerta',
-    },
-    {
-      id: 'adm-al-4',
-      title: 'Homologação de fazenda pendente',
-      subtitle: 'Fazenda Três Irmãos • Alvará sanitário',
-      severity: 'alerta',
-    },
-  ], []);
+  const ADMIN_ALERTS: readonly AlertItem[] = useMemo(() => {
+    const dynamicAlerts: AlertItem[] = [];
+
+    if (vehicles && vehicles.length > 0) {
+      vehicles.forEach((v) => {
+        if (v.statusUso === 'MANUTENCAO' || v.ativo === false) {
+          dynamicAlerts.push({
+            id: `adm-veh-maint-${v.id}`,
+            title: v.statusUso === 'MANUTENCAO' ? 'Veículo em manutenção preventiva' : 'Veículo inativo na frota',
+            subtitle: `Placa ${v.placa} • ${v.marca || ''} ${v.modelo || ''}`.trim(),
+            severity: 'bloqueio',
+          });
+        } else if (v.dataVencimentoInspecao) {
+          const daysLeft = Math.ceil((new Date(v.dataVencimentoInspecao).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          if (daysLeft <= 60) {
+            dynamicAlerts.push({
+              id: `adm-veh-insp-${v.id}`,
+              title: daysLeft < 0 ? 'Inspeção veicular vencida' : `Inspeção veicular em ${daysLeft} dias`,
+              subtitle: `Placa ${v.placa} • Vencimento ${new Date(v.dataVencimentoInspecao).toLocaleDateString('pt-BR')}`,
+              severity: daysLeft < 0 ? 'bloqueio' : 'alerta',
+            });
+          }
+        }
+      });
+    }
+
+    if (employees && employees.length > 0) {
+      employees.forEach((emp) => {
+        if (emp.dataVencimentoCnh) {
+          const daysLeft = Math.ceil((new Date(emp.dataVencimentoCnh).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          if (daysLeft <= 60) {
+            dynamicAlerts.push({
+              id: `adm-emp-cnh-${emp.id}`,
+              title: daysLeft < 0 ? 'CNH vencida' : `CNH a vencer em ${daysLeft} dias`,
+              subtitle: `${emp.nome} • Categoria ${emp.categoriaCnh || 'E'}`,
+              severity: daysLeft < 0 ? 'bloqueio' : 'alerta',
+            });
+          }
+        }
+      });
+    }
+
+    if (localFazendas && localFazendas.length > 0) {
+      localFazendas.forEach((f) => {
+        if (f.ativo === false) {
+          dynamicAlerts.push({
+            id: `adm-faz-${f.id}`,
+            title: 'Homologação de fazenda pendente',
+            subtitle: `${f.nome} • Cadastro inativo`,
+            severity: 'alerta',
+          });
+        }
+      });
+    }
+
+    liveAlerts.forEach((al) => {
+      if (!dynamicAlerts.some((existing) => existing.id === al.id)) {
+        dynamicAlerts.push(al);
+      }
+    });
+
+    return dynamicAlerts.slice(0, 5);
+  }, [vehicles, employees, localFazendas, liveAlerts]);
 
   const handleAdminAlertClick = useCallback((alert: AlertItem) => {
     const sub = alert.subtitle.toLowerCase();
@@ -915,7 +805,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     navigate('/visao-geral');
   }, [navigate]);
 
-  const queueSource = liveQueue.length > 0 ? liveQueue : DEFAULT_QUEUE_ITEMS;
+  const queueSource = useMemo(() => liveQueue, [liveQueue]);
   const visibleQueue = useMemo(() => {
     if (!normalizedSearch) return queueSource;
     return queueSource.filter(
@@ -929,7 +819,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     );
   }, [queueSource, normalizedSearch]);
 
-  const alertsSource = liveAlerts.length > 0 ? liveAlerts : ALERT_ITEMS;
+  const alertsSource = useMemo(() => liveAlerts, [liveAlerts]);
   const visibleAlerts = useMemo(() => {
     if (!normalizedSearch) return alertsSource;
     return alertsSource.filter(
@@ -939,7 +829,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     );
   }, [alertsSource, normalizedSearch]);
 
-  const routesSource = liveRoutes.length > 0 ? liveRoutes : ONGOING_ROUTES;
+  const routesSource = useMemo(() => liveRoutes, [liveRoutes]);
   const visibleRoutes = useMemo(() => {
     if (!normalizedSearch) return routesSource;
     return routesSource.filter(
@@ -949,12 +839,12 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     );
   }, [routesSource, normalizedSearch]);
 
-  // Auditoria: histórico e fila
+  // Auditoria: histórico e fila sincronizados com os relatórios reais
   const liveAuditHistory = useMemo<readonly AuditHistoryItem[]>(() => {
-    if (!allReports || allReports.length === 0) {
-      return DEFAULT_AUDIT_HISTORY;
+    if (validReports.length === 0) {
+      return [];
     }
-    const filtered = allReports
+    return validReports
       .filter((r) => {
         const s = (r.status || '').toLowerCase();
         return s === 'aprovado' || s === 'reprovado' || s === 'concluido';
@@ -988,25 +878,21 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
           timestamp: dateStr,
         };
       });
-
-    return filtered.length > 0 ? filtered : DEFAULT_AUDIT_HISTORY;
-  }, [allReports]);
+  }, [validReports]);
 
   const aprovadosCount = useMemo(() => {
-    const count = (allReports ?? []).filter((r) => {
+    return validReports.filter((r) => {
       const s = (r.status || '').toLowerCase();
       return s === 'aprovado' || s === 'concluido';
     }).length;
-    return count > 0 ? count : 2;
-  }, [allReports]);
+  }, [validReports]);
 
   const reprovadosCount = useMemo(() => {
-    const count = (allReports ?? []).filter((r) => {
+    return validReports.filter((r) => {
       const s = (r.status || '').toLowerCase();
       return s === 'reprovado';
     }).length;
-    return count > 0 ? count : 1;
-  }, [allReports]);
+  }, [validReports]);
 
   const visibleAuditHistory = useMemo(() => {
     return liveAuditHistory.filter((item) => {
@@ -1027,7 +913,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
   }, [visibleQueue, auditStatusFilter]);
 
   const handleExportCsv = useCallback(() => {
-    const reportsToExport = allReports && allReports.length > 0 ? allReports : data?.itens ?? [];
+    const reportsToExport = allReports && allReports.length > 0 ? allReports : scopedPageReports;
     if (reportsToExport.length === 0) return;
 
     const headers = [
@@ -1076,7 +962,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [allReports, data?.itens]);
+  }, [allReports, scopedPageReports]);
 
   // Navegação de abas
   const handleTabChange = useCallback((tab: 'overview' | 'audit' | 'reports') => {
@@ -1124,9 +1010,9 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
 
 
 
-    // Itens indexados para pesquisa rápida na barra superior
+  // Itens indexados para pesquisa rápida na barra superior (escopados pela empresa logada)
   const quickSearchReports = useMemo<readonly QuickSearchReportItem[]>(() => {
-    return DEFAULT_QUEUE_ITEMS.map((item) => ({
+    return queueSource.map((item) => ({
       id: item.id,
       code: item.code,
       gta: item.gta,
@@ -1135,15 +1021,10 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
       route: item.route,
       status: item.status,
     }));
-  }, []);
+  }, [queueSource]);
 
   const quickSearchVehicles = useMemo<readonly QuickSearchVehicleItem[]>(() => {
-    const list: QuickSearchVehicleItem[] = [
-      { id: 1, placa: 'LKD-2B45', modelo: 'Scania R450', marca: 'Scania', motorista: 'Jonas Ribeiro', status: 'Em trânsito' },
-      { id: 2, placa: 'QAP-3J88', modelo: 'Volvo FH 540', marca: 'Volvo', motorista: 'Cleiton Alves', status: 'Em trânsito' },
-      { id: 3, placa: 'BRA-2E19', modelo: 'Actros 2651', marca: 'Mercedes-Benz', motorista: 'Marcos Tavares', status: 'Disponível' },
-      { id: 4, placa: 'BRL-1920', modelo: 'Scania R440', marca: 'Scania', motorista: 'Wesley Prado', status: 'Em trânsito' },
-    ];
+    const list: QuickSearchVehicleItem[] = [];
     if (vehicles && vehicles.length > 0) {
       vehicles.forEach((v) => {
         if (!list.some((existing) => existing.placa.toUpperCase() === v.placa?.toUpperCase())) {
@@ -1153,7 +1034,7 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
             modelo: v.modelo || 'Caminhão Boiadeiro',
             marca: v.marca || '',
             motorista: v.motoristaAtualNome || '',
-            status: v.statusUso === 'EM_USO' ? 'Em trânsito' : 'Disponível',
+            status: v.statusUso === 'EM_USO' ? 'Em trânsito' : v.statusUso === 'MANUTENCAO' ? 'Manutenção' : 'Disponível',
           });
         }
       });
@@ -1162,20 +1043,14 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
   }, [vehicles]);
 
   const quickSearchDrivers = useMemo<readonly QuickSearchDriverItem[]>(() => {
-    const list: QuickSearchDriverItem[] = [
-      { id: 1, nome: 'Jonas Ribeiro', cargo: 'Motorista Boiadeiro', cnhStatus: 'CNH Ativa', rotaAtual: 'Santa Clara → Campo Grande' },
-      { id: 2, nome: 'Cleiton Alves', cargo: 'Motorista Boiadeiro', cnhStatus: 'CNH Ativa', rotaAtual: 'Boa Vista → Rondonópolis' },
-      { id: 3, nome: 'Marcos Tavares', cargo: 'Motorista Boiadeiro', cnhStatus: 'CNH Ativa', rotaAtual: 'Três Irmãos → Anápolis' },
-      { id: 4, nome: 'Adriano Souza', cargo: 'Motorista Boiadeiro', cnhStatus: 'CNH Vencida', rotaAtual: 'Bloqueio preventivo' },
-      { id: 5, nome: 'Wesley Prado', cargo: 'Motorista Boiadeiro', cnhStatus: 'CNH Ativa', rotaAtual: 'Boa Vista → Rondonópolis' },
-    ];
+    const list: QuickSearchDriverItem[] = [];
     if (employees && employees.length > 0) {
       employees.forEach((emp) => {
         if (!list.some((existing) => existing.nome.toLowerCase() === emp.nome.toLowerCase())) {
           list.push({
             id: emp.id,
             nome: emp.nome,
-            cargo: emp.tipo || 'Colaborador',
+            cargo: emp.cargo || emp.tipo || 'Colaborador',
             cnhStatus: emp.ativo !== false ? 'Ativo' : 'Inativo',
           });
         }
@@ -1708,9 +1583,9 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
 
                   {/* GRID SUPERIOR: GRÁFICO DE TENDÊNCIA/ÁREA SUAVE (60%) + DONUT DA FROTA (40%) */}
                   <div className="vg-admin-grid-top">
-                    <AdminTrendChart isDarkMode={theme === 'dark'} />
+                    <AdminTrendChart isDarkMode={theme === 'dark'} reports={validReports} />
                     <AdminFleetDonutChart
-                      totalVehicles={vehicles?.length || 28}
+                      totalVehicles={totalCaminhoes}
                       inTransitCount={emRotaCaminhoes}
                       isDarkMode={theme === 'dark'}
                     />
@@ -1718,13 +1593,19 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
 
                   {/* GRID INFERIOR: TOP CORREDORES LOGÍSTICOS (55%) + GAUGE DE BEM-ESTAR ANIMAL (45%) */}
                   <div className="vg-admin-grid-mid">
-                    <AdminTopRoutesChart isDarkMode={theme === 'dark'} />
-                    <AdminWelfareGauge isDarkMode={theme === 'dark'} />
+                    <AdminTopRoutesChart
+                      isDarkMode={theme === 'dark'}
+                      reports={validReports}
+                      fazendaResolver={fazendaResolver}
+                      frigorificoResolver={frigorificoResolver}
+                    />
+                    <AdminWelfareGauge isDarkMode={theme === 'dark'} reports={validReports} />
                   </div>
                 </section>
               ) : (
                 <AnalistaWelfareCharts
                   isDarkMode={theme === 'dark'}
+                  reports={validReports}
                   desembarqueBars={chartBars.desembarque}
                   embarqueBars={chartBars.embarque}
                   mortesBars={chartBars.mortes}
@@ -1793,28 +1674,34 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
                     </div>
 
                     <div className="vg-alerts-list">
-                      {ADMIN_ALERTS.map((alert) => (
-                        <div
-                          key={alert.id}
-                          className="vg-alert-item"
-                          onClick={() => handleAdminAlertClick(alert)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') handleAdminAlertClick(alert);
-                          }}
-                          style={{ cursor: 'pointer' }}
-                          title="Clique para inspecionar e resolver este alerta"
-                        >
-                          <span className="vg-alert-icon">
-                            <AlertTriangleYellowIcon />
-                          </span>
-                          <div className="vg-alert-text">
-                            <strong className="vg-alert-title">{alert.title}</strong>
-                            <span className="vg-alert-sub">{alert.subtitle}</span>
-                          </div>
+                      {ADMIN_ALERTS.length === 0 ? (
+                        <div className="vg-empty-inline">
+                          Nenhum alerta operacional pendente na frota ou cadastros.
                         </div>
-                      ))}
+                      ) : (
+                        ADMIN_ALERTS.map((alert) => (
+                          <div
+                            key={alert.id}
+                            className="vg-alert-item"
+                            onClick={() => handleAdminAlertClick(alert)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') handleAdminAlertClick(alert);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                            title="Clique para inspecionar e resolver este alerta"
+                          >
+                            <span className="vg-alert-icon">
+                              <AlertTriangleYellowIcon />
+                            </span>
+                            <div className="vg-alert-text">
+                              <strong className="vg-alert-title">{alert.title}</strong>
+                              <span className="vg-alert-sub">{alert.subtitle}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </article>
 
@@ -1888,6 +1775,15 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
                             >
                               {item.status}
                             </span>
+                            <button
+                              type="button"
+                              className="vg-analyze-link"
+                              onClick={() => downloadRouteReportPdf(item.id, { report: { id: item.id, numeroGta: item.gta } })}
+                              title="Baixar PDF deste diário de rota"
+                            >
+                              <ExportIcon size={12} style={{ marginRight: 4 }} />
+                              <span>PDF</span>
+                            </button>
                             <button
                               type="button"
                               className="vg-analyze-link"
@@ -2114,6 +2010,15 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
                             <button
                               type="button"
                               className="vg-analyze-link"
+                              onClick={() => downloadRouteReportPdf(item.id, { report: { id: item.id, numeroGta: item.gta } })}
+                              title="Baixar PDF deste diário de rota"
+                            >
+                              <ExportIcon size={12} style={{ marginRight: 4 }} />
+                              <span>PDF</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="vg-analyze-link"
                               onClick={() => handleOpenAudit(item.id, { numeroGta: item.gta })}
                             >
                               <span>Analisar</span>
@@ -2197,11 +2102,11 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
 
               {data && !isLoading && (
                 <p className="dashboard-total" role="status" aria-live="polite">
-                  {data.total} {data.total === 1 ? 'relatório encontrado' : 'relatórios encontrados'}.
+                  {scopedPageReports.length} {scopedPageReports.length === 1 ? 'relatório encontrado' : 'relatórios encontrados'}.
                 </p>
               )}
 
-              {isSuccess && data && data.itens.length > 0 && (
+              {isSuccess && data && scopedPageReports.length > 0 && (
                 <section className="dashboard-filters" aria-labelledby="dashboard-filter-title">
                   <h3 id="dashboard-filter-title">Filtrar relatórios desta página</h3>
                   <div className="dashboard-filter-fields">
@@ -2262,14 +2167,14 @@ export function Dashboard({ initialTab = 'overview' }: DashboardProps) {
                 </section>
               )}
 
-              {isSuccess && data && data.itens.length === 0 && (
+              {isSuccess && data && scopedPageReports.length === 0 && (
                 <section className="dashboard-state" role="status">
                   <h3>Nenhum relatório encontrado</h3>
-                  <p>Não há relatórios de viagem registrados para esta página.</p>
+                  <p>Não há relatórios de viagem registrados para sua empresa nesta página.</p>
                 </section>
               )}
 
-              {isSuccess && data && data.itens.length > 0 && (
+              {isSuccess && data && scopedPageReports.length > 0 && (
                 <>
                   {filteredReports.length === 0 ? (
                     <section className="dashboard-state" role="status">

@@ -13,6 +13,7 @@ export interface CriarFuncionarioEmpresaRequest {
   categoriaCnh?: string | null;
   dataVencimentoCnh?: string | null;
   localVinculado?: string | null;
+  codigoEmpresa?: string | null;
 }
 
 export interface AtualizarFuncionarioEmpresaRequest {
@@ -27,6 +28,8 @@ export interface AtualizarFuncionarioEmpresaRequest {
   dataVencimentoCnh?: string | null;
   localVinculado?: string | null;
   ativo?: boolean | null;
+  senha?: string | null;
+  codigoEmpresa?: string | null;
 }
 
 export interface FuncionarioEmpresaResponse {
@@ -46,4 +49,5 @@ export interface FuncionarioEmpresaResponse {
   categoriaCnh?: string | null;
   dataVencimentoCnh?: string | null;
   isCurrentUser?: boolean;
+  senhaProvisoria?: string | null;
 }

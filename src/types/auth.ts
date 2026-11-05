@@ -13,6 +13,8 @@ export interface UsuarioResponse {
   tipo: TipoUsuario;
   cpf: string;
   codigoInterno: string | null;
+  empresaId?: number | null;
+  codigoEmpresa?: string | null;
   nome: string;
   dataNascimento: string | null;
   email: string;
@@ -35,6 +37,7 @@ export interface LoginRequest {
   email: string;
   senha: string;
   codigoEmpresa: string;
+  codigoEmpresaCorporativo?: string | null;
 }
 
 export interface LoginResponse {

@@ -15,10 +15,17 @@ import {
   SearchIcon,
   NavMotoristasIcon,
 } from '../../components/icons';
+import {
+  readTenantStorage,
+  resolveCurrentTenant,
+  writeTenantStorage,
+} from '../../utils/tenantScope';
 import './FazendasUnidades.css';
 
 export interface FazendaModel {
   id: number;
+  empresaId?: number | null;
+  codigoEmpresa?: string | null;
   nome: string;
   razaoSocial?: string | null;
   cnpj?: string | null;
@@ -35,6 +42,8 @@ export interface FazendaModel {
 
 export interface UnidadeFrigorificaModel {
   id: number;
+  empresaId?: number | null;
+  codigoEmpresa?: string | null;
   nome: string;
   razaoSocial?: string | null;
   cnpj?: string | null;
@@ -56,7 +65,7 @@ const FAZENDAS_STORAGE_KEY = 'efficientia_fazendas_v4';
 const FRIGORIFICOS_STORAGE_KEY = 'efficientia_frigorificos_v4';
 const COLABORADORES_STORAGE_KEY = 'efficientia_colaboradores_v3';
 
-// Colaboradores padrão para garantir que os selects sempre tenham dados
+// Colaboradores padrão para garantir que os selects sempre tenham dados na empresa demo
 const DEFAULT_COLLABORATORS: FuncionarioEmpresaResponse[] = [
   {
     id: 1,
@@ -445,112 +454,68 @@ const DEFAULT_FRIGORIFICOS: UnidadeFrigorificaModel[] = [
   },
 ];
 
-function getStoredCollaborators(): FuncionarioEmpresaResponse[] {
-  try {
-    const stored = localStorage.getItem(COLABORADORES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const list = [...parsed] as FuncionarioEmpresaResponse[];
-        DEFAULT_COLLABORATORS.forEach((def) => {
-          if (!list.some((c) => c.id === def.id || c.cpf === def.cpf)) {
-            list.push(def);
-          }
-        });
-        return list;
-      }
-    }
-  } catch {
-    // fallback
-  }
-  try {
-    localStorage.setItem(COLABORADORES_STORAGE_KEY, JSON.stringify(DEFAULT_COLLABORATORS));
-  } catch {
-    // fallback
-  }
-  return DEFAULT_COLLABORATORS;
-}
-
 export function FazendasUnidades() {
-  const { empresa } = useAuth();
-  const empresaId = empresa?.id;
+  const { empresa, user } = useAuth();
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
 
   // Aba ativa: 'FAZENDAS' ou 'FRIGORIFICOS'
   const [activeTab, setActiveTab] = useState<'FAZENDAS' | 'FRIGORIFICOS'>('FAZENDAS');
   const [query, setQuery] = useState('');
   const [statusFiltro, setStatusFiltro] = useState<'TODOS' | 'ATIVOS' | 'INATIVOS'>('TODOS');
 
-  // Colaboradores cadastrados
-  const [collaborators, setCollaborators] = useState<FuncionarioEmpresaResponse[]>(getStoredCollaborators);
+  // Colaboradores cadastrados isolados por empresa
+  const [collaborators, setCollaborators] = useState<FuncionarioEmpresaResponse[]>(() =>
+    readTenantStorage<FuncionarioEmpresaResponse>(COLABORADORES_STORAGE_KEY, tenant, DEFAULT_COLLABORATORS)
+  );
 
-  // Fazendas cadastradas
-  const [fazendas, setFazendas] = useState<FazendaModel[]>(() => {
-    try {
-      const stored = localStorage.getItem(FAZENDAS_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as FazendaModel[];
-        }
-      }
-    } catch {
-      // fallback
-    }
-    try {
-      localStorage.setItem(FAZENDAS_STORAGE_KEY, JSON.stringify(DEFAULT_FAZENDAS));
-    } catch {
-      // fallback
-    }
-    return DEFAULT_FAZENDAS;
-  });
+  // Fazendas cadastradas isoladas por empresa
+  const [fazendas, setFazendas] = useState<FazendaModel[]>(() =>
+    readTenantStorage<FazendaModel>(FAZENDAS_STORAGE_KEY, tenant, DEFAULT_FAZENDAS)
+  );
 
-  // Frigoríficos cadastrados
-  const [frigorificos, setFrigorificos] = useState<UnidadeFrigorificaModel[]>(() => {
-    try {
-      const stored = localStorage.getItem(FRIGORIFICOS_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as UnidadeFrigorificaModel[];
-        }
-      }
-    } catch {
-      // fallback
-    }
-    try {
-      localStorage.setItem(FRIGORIFICOS_STORAGE_KEY, JSON.stringify(DEFAULT_FRIGORIFICOS));
-    } catch {
-      // fallback
-    }
-    return DEFAULT_FRIGORIFICOS;
-  });
+  // Frigoríficos cadastrados isolados por empresa
+  const [frigorificos, setFrigorificos] = useState<UnidadeFrigorificaModel[]>(() =>
+    readTenantStorage<UnidadeFrigorificaModel>(FRIGORIFICOS_STORAGE_KEY, tenant, DEFAULT_FRIGORIFICOS)
+  );
 
-  const persistFazendas = useCallback((updated: FazendaModel[]) => {
-    setFazendas(updated);
-    try {
-      localStorage.setItem(FAZENDAS_STORAGE_KEY, JSON.stringify(updated));
-    } catch {
-      // fallback
-    }
-  }, []);
+  const persistFazendas = useCallback(
+    (updated: FazendaModel[]) => {
+      const stamped = updated.map((item) => ({
+        ...item,
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
+      }));
+      setFazendas(stamped);
+      writeTenantStorage(FAZENDAS_STORAGE_KEY, tenant, stamped);
+    },
+    [tenant]
+  );
 
-  const persistFrigorificos = useCallback((updated: UnidadeFrigorificaModel[]) => {
-    setFrigorificos(updated);
-    try {
-      localStorage.setItem(FRIGORIFICOS_STORAGE_KEY, JSON.stringify(updated));
-    } catch {
-      // fallback
-    }
-  }, []);
+  const persistFrigorificos = useCallback(
+    (updated: UnidadeFrigorificaModel[]) => {
+      const stamped = updated.map((item) => ({
+        ...item,
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
+      }));
+      setFrigorificos(stamped);
+      writeTenantStorage(FRIGORIFICOS_STORAGE_KEY, tenant, stamped);
+    },
+    [tenant]
+  );
 
-  const persistCollaborators = useCallback((updated: FuncionarioEmpresaResponse[]) => {
-    setCollaborators(updated);
-    try {
-      localStorage.setItem(COLABORADORES_STORAGE_KEY, JSON.stringify(updated));
-    } catch {
-      // fallback
-    }
-  }, []);
+  const persistCollaborators = useCallback(
+    (updated: FuncionarioEmpresaResponse[]) => {
+      const stamped = updated.map((item) => ({
+        ...item,
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
+      }));
+      setCollaborators(stamped);
+      writeTenantStorage(COLABORADORES_STORAGE_KEY, tenant, stamped);
+    },
+    [tenant]
+  );
 
   // Listas filtradas de profissionais por cargo
   const pecuaristas = useMemo(
@@ -676,6 +641,8 @@ export function FazendasUnidades() {
 
     const payload: FazendaModel = {
       id: editingFazenda ? editingFazenda.id : Date.now(),
+      empresaId: tenant.empresaId,
+      codigoEmpresa: tenant.codigoEmpresa,
       nome: formFazNome.trim(),
       razaoSocial: formFazRazao.trim() || null,
       cnpj: formFazCnpj.trim() || null,
@@ -735,13 +702,15 @@ export function FazendasUnidades() {
     const newId = Date.now();
     const newPec: FuncionarioEmpresaResponse = {
       id: newId,
-      empresaId: empresaId || 1,
-      codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+      empresaId: tenant.empresaId,
+      codigoEmpresa: tenant.codigoEmpresa,
       tipo: 'pecuarista',
       nome: novoPecNome.trim(),
       cpf: novoPecCpf.trim() || '000.000.000-00',
       telefone: novoPecTelefone.trim(),
-      email: novoPecEmail.trim().toLowerCase() || `${novoPecNome.trim().toLowerCase().replace(/\s+/g, '.')}@pecuarista.com`,
+      email:
+        novoPecEmail.trim().toLowerCase() ||
+        `${novoPecNome.trim().toLowerCase().replace(/\s+/g, '.')}@pecuarista.com`,
       cargo: 'Produtor Rural / Pecuarista',
       ativo: true,
       criadoEm: new Date().toISOString(),
@@ -854,6 +823,8 @@ export function FazendasUnidades() {
 
     const payload: UnidadeFrigorificaModel = {
       id: editingFrigo ? editingFrigo.id : Date.now(),
+      empresaId: tenant.empresaId,
+      codigoEmpresa: tenant.codigoEmpresa,
       nome: formFrigoNome.trim(),
       razaoSocial: formFrigoRazao.trim() || null,
       cnpj: formFrigoCnpj.trim() || null,

@@ -18,27 +18,29 @@ interface AdminFleetDonutChartProps {
 }
 
 export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
-  totalVehicles = 28,
-  inTransitCount = 18,
+  totalVehicles = 0,
+  inTransitCount = 0,
   isDarkMode = false,
 }) => {
   const navigate = useNavigate();
   const [activeSliceId, setActiveSliceId] = useState<string | null>(null);
 
-  // Derive fleet distribution
   const slices: readonly FleetSlice[] = useMemo(() => {
-    const total = totalVehicles > 0 ? totalVehicles : 28;
-    const inTransit = inTransitCount > 0 ? inTransitCount : 18;
-    const inMaintenance = 2;
-    const inLoading = 2;
+    const total = Math.max(0, totalVehicles);
+    const inTransit = Math.min(total, Math.max(0, inTransitCount));
+    const remaining = Math.max(0, total - inTransit);
+    const inMaintenance = total >= 4 ? Math.min(remaining, Math.max(1, Math.floor(total * 0.07))) : 0;
+    const inLoading = total >= 4 ? Math.min(remaining - inMaintenance, Math.max(1, Math.floor(total * 0.07))) : 0;
     const available = Math.max(0, total - inTransit - inMaintenance - inLoading);
+
+    const pct = (val: number) => (total > 0 ? Math.round((val / total) * 1000) / 10 : 0);
 
     return [
       {
         id: 'transito',
         label: 'Em Trânsito',
         count: inTransit,
-        percentage: Math.round((inTransit / total) * 1000) / 10,
+        percentage: pct(inTransit),
         color: '#0F51AE',
         darkColor: '#3B82F6',
         description: 'Caminhões em rota ativa com carga viva',
@@ -47,7 +49,7 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
         id: 'disponivel',
         label: 'Disponível no Pátio',
         count: available,
-        percentage: Math.round((available / total) * 1000) / 10,
+        percentage: pct(available),
         color: '#10B981',
         darkColor: '#34D399',
         description: 'Prontos para nova escala de viagem',
@@ -56,7 +58,7 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
         id: 'carregando',
         label: 'Embarque/Descarga',
         count: inLoading,
-        percentage: Math.round((inLoading / total) * 1000) / 10,
+        percentage: pct(inLoading),
         color: '#6366F1',
         darkColor: '#818CF8',
         description: 'Aguardando liberação de curral',
@@ -65,7 +67,7 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
         id: 'manutencao',
         label: 'Revisão / Manutenção',
         count: inMaintenance,
-        percentage: Math.round((inMaintenance / total) * 1000) / 10,
+        percentage: pct(inMaintenance),
         color: '#F59E0B',
         darkColor: '#FBBF24',
         description: 'Manutenção preventiva programada',
@@ -74,33 +76,41 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
   }, [totalVehicles, inTransitCount]);
 
   const total = useMemo(() => slices.reduce((acc, s) => acc + s.count, 0), [slices]);
+  const activeFleetPct = useMemo(() => {
+    if (total <= 0) return '0,0%';
+    const maint = slices.find((s) => s.id === 'manutencao')?.count ?? 0;
+    return `${(((total - maint) / total) * 100).toFixed(1).replace('.', ',')}%`;
+  }, [slices, total]);
 
-  // Donut geometry calculations
   const radius = 68;
   const strokeWidth = 22;
   const circumference = 2 * Math.PI * radius;
 
-  // Compute stroke offsets for each slice
   const renderedSlices = useMemo(() => {
+    if (total <= 0) return [];
     let currentOffset = 0;
-    return slices.map((slice) => {
-      const sliceLength = (slice.count / total) * circumference;
-      const strokeDasharray = `${Math.max(1, sliceLength - 2)} ${circumference - sliceLength + 2}`;
-      const strokeDashoffset = -currentOffset;
-      currentOffset += sliceLength;
-      return {
-        ...slice,
-        strokeDasharray,
-        strokeDashoffset,
-      };
-    });
+    return slices
+      .filter((s) => s.count > 0)
+      .map((slice) => {
+        const sliceLength = (slice.count / total) * circumference;
+        const strokeDasharray = `${Math.max(1, sliceLength - 2)} ${circumference - sliceLength + 2}`;
+        const strokeDashoffset = -currentOffset;
+        currentOffset += sliceLength;
+        return {
+          ...slice,
+          strokeDasharray,
+          strokeDashoffset,
+        };
+      });
   }, [slices, total, circumference]);
 
   const activeSlice = activeSliceId ? slices.find((s) => s.id === activeSliceId) : null;
+  const maxCapacityCabecas = total * 80;
+  const usedCapacityCabecas = Math.min(maxCapacityCabecas, inTransitCount * 80);
+  const capacityPct = maxCapacityCabecas > 0 ? Math.round((usedCapacityCabecas / maxCapacityCabecas) * 1000) / 10 : 0;
 
   return (
     <article className="vg-card vg-admin-donut-card" aria-label="Alocação e Prontidão da Frota">
-      {/* HEADER DO CARD */}
       <div className="vg-admin-card-header">
         <div className="vg-admin-header-titles">
           <div className="vg-admin-tag-pill green">Status da Frota</div>
@@ -119,9 +129,7 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
         </button>
       </div>
 
-      {/* ÁREA CENTRAL: DONUT SVG + LEGENDA */}
       <div className="vg-donut-content-row">
-        {/* GRÁFICO DE ROSCA SVG */}
         <div className="vg-donut-chart-wrapper">
           <svg
             viewBox="0 0 200 200"
@@ -129,7 +137,6 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
             role="img"
             aria-label="Gráfico de distribuição da frota"
           >
-            {/* Círculo de fundo do trilho */}
             <circle
               cx="100"
               cy="100"
@@ -139,7 +146,6 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
               strokeWidth={strokeWidth}
             />
 
-            {/* Segmentos de arco da rosca */}
             <g transform="rotate(-90 100 100)">
               {renderedSlices.map((slice) => {
                 const isHovered = activeSliceId === slice.id;
@@ -169,7 +175,6 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
             </g>
           </svg>
 
-          {/* TEXTO INFORMATIVO NO CENTRO DA ROSCA */}
           <div className="vg-donut-center-info" aria-hidden="true">
             {activeSlice ? (
               <>
@@ -183,13 +188,12 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
               <>
                 <strong className="vg-donut-center-number">{total}</strong>
                 <span className="vg-donut-center-label">Caminhões</span>
-                <span className="vg-donut-center-sub">85,7% Ativa</span>
+                <span className="vg-donut-center-sub">{activeFleetPct} Ativa</span>
               </>
             )}
           </div>
         </div>
 
-        {/* LEGENDA INTERATIVA LATERAL */}
         <div className="vg-donut-legend">
           {slices.map((slice) => {
             const isHovered = activeSliceId === slice.id;
@@ -224,14 +228,15 @@ export const AdminFleetDonutChart: React.FC<AdminFleetDonutChartProps> = ({
         </div>
       </div>
 
-      {/* RODAPÉ: BARRA DE CAPACIDADE DE CARGA VIVA */}
       <div className="vg-donut-capacity-footer">
         <div className="vg-capacity-header-row">
           <span className="vg-capacity-label">Capacidade Instantânea da Frota</span>
-          <strong className="vg-capacity-val">1.840 / 2.200 cabeças (83,6%)</strong>
+          <strong className="vg-capacity-val">
+            {usedCapacityCabecas.toLocaleString('pt-BR')} / {maxCapacityCabecas.toLocaleString('pt-BR')} cabeças ({capacityPct.toFixed(1).replace('.', ',')}%)
+          </strong>
         </div>
         <div className="vg-capacity-track" aria-hidden="true">
-          <div className="vg-capacity-fill" style={{ width: '83.6%' }} />
+          <div className="vg-capacity-fill" style={{ width: `${capacityPct}%` }} />
         </div>
       </div>
     </article>

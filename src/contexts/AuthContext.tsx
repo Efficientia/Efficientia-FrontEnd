@@ -15,6 +15,11 @@ import type {
 } from '../types/auth';
 import type { EmpresaResponse } from '../types/empresa';
 import {
+  buildFallbackEmpresa,
+  normalizeCompanyCode,
+  resolveCurrentTenant,
+} from '../utils/tenantScope';
+import {
   AuthContext,
   type AuthContextData,
 } from './authContextDef';
@@ -81,45 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const atualizarEmpresaLocal = useCallback((dados: Partial<EmpresaResponse>): void => {
-    const baseEmpresa: EmpresaResponse = state.empresa || {
-      id: 1,
-      codigoEmpresa: 'EMP00001',
-      codigo: 'EMP00001',
-      codigoInterno: 'EMP00001',
-      nomeEmpresa: (dados.nomeEmpresa || dados.nomeFantasia || 'Minha Empresa') as string,
-      nome: (dados.nomeEmpresa || dados.nomeFantasia || 'Minha Empresa') as string,
-      nomeFantasia: (dados.nomeFantasia || dados.nomeEmpresa || 'Minha Empresa') as string,
-      razaoSocial: dados.razaoSocial ?? null,
-      cnpj: dados.cnpj || '',
-      emailCorporativo: dados.emailCorporativo || '',
-      email: dados.emailCorporativo || '',
-      telefone: dados.telefone ?? null,
-      enderecoId: null,
-      endereco: {
-        id: null,
-        cep: dados.cep ?? null,
-        logradouro: dados.logradouro ?? null,
-        numero: dados.numero ?? null,
-        cidade: dados.cidade ?? null,
-        estado: dados.estado ?? null,
-        uf: dados.uf ?? dados.estado ?? null,
-      },
-      cep: dados.cep ?? null,
-      logradouro: dados.logradouro ?? null,
-      numero: dados.numero ?? null,
-      cidade: dados.cidade ?? null,
-      estado: dados.estado ?? null,
-      uf: dados.uf ?? dados.estado ?? null,
-      logoUrl: dados.logoUrl ?? null,
-      etapaCadastro: 1,
-      cadastroCompleto: false,
-      status: 'PENDENTE_PRIMEIRO_ADMIN',
-      requerPrimeiroAdmin: true,
-      proximoPasso: 'CADASTRO_PRIMEIRO_ADMIN',
-      mensagem: null,
-      criadoEm: new Date().toISOString(),
-      atualizadoEm: new Date().toISOString(),
-    };
+    const tenant = resolveCurrentTenant(state.user, state.empresa);
+    const baseEmpresa: EmpresaResponse =
+      state.empresa || buildFallbackEmpresa(tenant.codigoEmpresa, tenant.empresaId, dados);
 
     const novaEmpresa: EmpresaResponse = {
       ...baseEmpresa,
@@ -156,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...storedSession,
         empresa: novaEmpresa,
       });
-    } else if (state.token) {
+    } else if (state.token && state.user) {
       writeStoredAuthSession({
         token: state.token,
         user: state.user,
@@ -169,17 +138,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const storedSession = getStoredAuthSession();
-      dispatch({
-        type: 'restore',
-        session: storedSession
+      if (storedSession) {
+        const resolvedTenant = resolveCurrentTenant(storedSession.user, storedSession.empresa);
+        const hydratedEmpresa: EmpresaResponse = storedSession.empresa
           ? {
-              token: storedSession.token,
-              user: storedSession.user,
-              empresa: storedSession.empresa,
-              roles: storedSession.roles,
+              ...storedSession.empresa,
+              id: resolvedTenant.empresaId,
+              codigoEmpresa: resolvedTenant.codigoEmpresa,
+              codigo: resolvedTenant.codigoEmpresa,
+              codigoInterno: resolvedTenant.codigoEmpresa,
             }
-          : null,
-      });
+          : buildFallbackEmpresa(resolvedTenant.codigoEmpresa, resolvedTenant.empresaId);
+
+        const hydratedUser =
+          storedSession.user && 'tipo' in storedSession.user
+            ? {
+                ...storedSession.user,
+                empresaId: resolvedTenant.empresaId,
+                codigoEmpresa: resolvedTenant.codigoEmpresa,
+              }
+            : storedSession.user;
+
+        const nextSession = {
+          token: storedSession.token,
+          user: hydratedUser,
+          empresa: hydratedEmpresa,
+          roles: storedSession.roles,
+        };
+
+        if (
+          !storedSession.empresa ||
+          storedSession.empresa.codigoEmpresa !== resolvedTenant.codigoEmpresa ||
+          storedSession.empresa.id !== resolvedTenant.empresaId
+        ) {
+          writeStoredAuthSession(nextSession);
+        }
+
+        dispatch({
+          type: 'restore',
+          session: nextSession,
+        });
+      } else {
+        dispatch({ type: 'restore', session: null });
+      }
     } catch {
       clearStoredAuthSession();
       dispatch({ type: 'restore', session: null });
@@ -195,17 +196,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.loginUsuario(dados);
       const roles = [normalizeRole(response.usuario.tipo)];
+
+      const corporateCode =
+        normalizeCompanyCode(dados.codigoEmpresaCorporativo) ||
+        normalizeCompanyCode(dados.codigoEmpresa) ||
+        normalizeCompanyCode(response.usuario.codigoEmpresa) ||
+        normalizeCompanyCode(response.usuario.codigoInterno) ||
+        'EFF60720';
+
       let empresaCarregada: EmpresaResponse | null = null;
-      if (dados.codigoEmpresa) {
+
+      // 1. Tenta buscar pelo código corporativo real da empresa
+      if (corporateCode) {
+        try {
+          empresaCarregada = await empresaService.buscarPorCodigo(corporateCode);
+        } catch {
+          // tenta fallback
+        }
+      }
+
+      // 2. Se ainda não encontrou e o código enviado ao login era diferente, tenta por ele
+      if (!empresaCarregada && dados.codigoEmpresa && dados.codigoEmpresa !== corporateCode) {
         try {
           empresaCarregada = await empresaService.buscarPorCodigo(dados.codigoEmpresa);
         } catch {
-          // fallback silencioso
+          // tenta fallback
         }
       }
+
+      // 3. Se o usuário possui empresaId numérico, tenta buscar por ID
+      if (!empresaCarregada && response.usuario.empresaId) {
+        try {
+          empresaCarregada = await empresaService.buscarPorId(response.usuario.empresaId);
+        } catch {
+          // tenta fallback
+        }
+      }
+
+      // 4. Garante contexto de empresa isolado para o Analista mesmo se o endpoint público retornar 404
+      if (!empresaCarregada) {
+        empresaCarregada = buildFallbackEmpresa(corporateCode, response.usuario.empresaId);
+      }
+
+      const usuarioComTenant: UsuarioResponse = {
+        ...response.usuario,
+        empresaId: empresaCarregada.id,
+        codigoEmpresa: empresaCarregada.codigoEmpresa || corporateCode,
+      };
+
       persistSession({
         token: response.token,
-        user: response.usuario,
+        user: usuarioComTenant,
         empresa: empresaCarregada,
         roles,
       });
@@ -220,10 +261,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.loginAdmin(dados);
       const roles = response.roles.map(normalizeRole);
+      const corporateCode =
+        normalizeCompanyCode(response.empresa?.codigoEmpresa) ||
+        normalizeCompanyCode(response.admin?.codigoEmpresa) ||
+        normalizeCompanyCode(dados.codigoEmpresa) ||
+        'EFF60720';
+
+      const empresaGarantida =
+        response.empresa ||
+        buildFallbackEmpresa(corporateCode, response.admin?.empresaId);
+
       persistSession({
         token: response.token,
         user: response.admin,
-        empresa: response.empresa,
+        empresa: empresaGarantida,
         roles,
       });
       return roles;

@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { normalizeApiError, type ApiRequestError } from '../../services/api';
 import { ADMIN_ONLY_ROLES } from '../../constants/auth';
+import { normalizeCompanyCode } from '../../utils/tenantScope';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
 import { EyeIcon, EyeOffIcon, ArrowRightIcon, CheckIcon, AlertTriangleIcon } from '../../components/icons';
 import './Login.css';
@@ -13,26 +14,45 @@ interface LoginLocationState {
   sucessoCadastro?: boolean;
 }
 
-const KNOWN_OPERATIONAL_ACCOUNTS: Record<string, { email: string; cpf: string; codigoEmpresa: string }> = {
+const KNOWN_OPERATIONAL_ACCOUNTS: Record<
+  string,
+  { email: string; cpf: string; codigoInterno: string; codigoEmpresaCorporativo: string }
+> = {
   'carla.mendes@empresa.com': {
     email: 'carla.mendes@empresa.com',
     cpf: '72139081245',
-    codigoEmpresa: 'ANA-CARLA-01',
+    codigoInterno: 'ANA-CARLA-01',
+    codigoEmpresaCorporativo: 'EFF60720',
   },
   '72139081245': {
     email: 'carla.mendes@empresa.com',
     cpf: '72139081245',
-    codigoEmpresa: 'ANA-CARLA-01',
+    codigoInterno: 'ANA-CARLA-01',
+    codigoEmpresaCorporativo: 'EFF60720',
   },
   'renata.analista@efficientia.com.br': {
     email: 'renata.analista@efficientia.com.br',
     cpf: '83920174620',
-    codigoEmpresa: 'ANA-EFF60720-01',
+    codigoInterno: 'ANA-EFF60720-01',
+    codigoEmpresaCorporativo: 'EFF60720',
   },
   '83920174620': {
     email: 'renata.analista@efficientia.com.br',
     cpf: '83920174620',
-    codigoEmpresa: 'ANA-EFF60720-01',
+    codigoInterno: 'ANA-EFF60720-01',
+    codigoEmpresaCorporativo: 'EFF60720',
+  },
+  'analista.demo@efficientia.com.br': {
+    email: 'analista.demo@efficientia.com.br',
+    cpf: '48273190512',
+    codigoInterno: 'ANA-DEMO-482731-UI',
+    codigoEmpresaCorporativo: 'EFF60720',
+  },
+  '48273190512': {
+    email: 'analista.demo@efficientia.com.br',
+    cpf: '48273190512',
+    codigoInterno: 'ANA-DEMO-482731-UI',
+    codigoEmpresaCorporativo: 'EFF60720',
   },
 };
 
@@ -74,7 +94,11 @@ export function Login() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   function getPostLoginPath(userRoles?: string[]): string {
-    const isOnlyEmployee = userRoles && !userRoles.some((r) => ADMIN_ONLY_ROLES.includes(r.toUpperCase() as (typeof ADMIN_ONLY_ROLES)[number]));
+    const isOnlyEmployee =
+      userRoles &&
+      !userRoles.some((r) =>
+        ADMIN_ONLY_ROLES.includes(r.toUpperCase() as (typeof ADMIN_ONLY_ROLES)[number])
+      );
     if (isOnlyEmployee) return '/visao-geral';
 
     const pendingStep = localStorage.getItem('@efficientia:onboarding:current_step');
@@ -121,6 +145,8 @@ export function Login() {
     setError(null);
     setNotice('');
 
+    const normalizedTypedCompanyCode = normalizeCompanyCode(cleanCodigo);
+
     try {
       // 1. Tenta autenticação de Administrador Corporativo
       try {
@@ -130,44 +156,71 @@ export function Login() {
           senha,
         });
 
-        localStorage.setItem('@efficientia:auth:last_codigo_empresa', cleanCodigo);
+        localStorage.setItem('@efficientia:auth:last_codigo_empresa', normalizedTypedCompanyCode || cleanCodigo);
         localStorage.setItem('@efficientia:auth:last_email', cleanEmail);
         navigate(getPostLoginPath(roles), { replace: true });
         return;
       } catch (adminErr) {
         // 2. Se falhar (por exemplo, perfil de Analista operacional), tenta login de usuário operacional
         try {
-          // Resolve o par completo (e-mail e CPF) e código interno exigidos pela API Java
           let targetEmail = cleanEmail.includes('@') ? cleanEmail : '';
           let targetCpf = cleanDigits.length === 11 ? cleanDigits : '';
           let targetCodigo = cleanCodigo;
+          let targetCompanyCode = normalizedTypedCompanyCode || cleanCodigo;
 
-          const matchedKnown = KNOWN_OPERATIONAL_ACCOUNTS[cleanEmail] || (cleanDigits.length === 11 ? KNOWN_OPERATIONAL_ACCOUNTS[cleanDigits] : undefined);
+          const matchedKnown =
+            KNOWN_OPERATIONAL_ACCOUNTS[cleanEmail] ||
+            (cleanDigits.length === 11 ? KNOWN_OPERATIONAL_ACCOUNTS[cleanDigits] : undefined);
+
           if (matchedKnown) {
+            // Valida isolamento multi-tenant: analistas de EFF60720 só podem autenticar sob sua própria empresa
+            const allowedCompanyCodes = [
+              matchedKnown.codigoEmpresaCorporativo,
+              'EFF-001',
+              matchedKnown.codigoInterno,
+            ];
+            if (!allowedCompanyCodes.includes(cleanCodigo) && !allowedCompanyCodes.includes(normalizedTypedCompanyCode)) {
+              throw new Error('Este usuário operacional não pertence ao código de empresa informado.', {
+                cause: adminErr,
+              });
+            }
             targetEmail = matchedKnown.email;
             targetCpf = matchedKnown.cpf;
-            // Se o usuário digitou o código corporativo padrão (EFF-001 / EFF60720), adapta para o código do cadastro
-            if (!targetCodigo || targetCodigo === 'EFF-001' || targetCodigo === 'EFF60720') {
-              targetCodigo = matchedKnown.codigoEmpresa;
-            }
+            targetCodigo = matchedKnown.codigoInterno;
+            targetCompanyCode = matchedKnown.codigoEmpresaCorporativo;
           } else {
-            // Busca na lista local de colaboradores sincronizada
+            // Busca nos colaboradores sincronizados estritamente dentro da empresa informada
             try {
-              const stored = localStorage.getItem('efficientia_colaboradores_v3');
-              if (stored) {
-                const list = JSON.parse(stored);
-                if (Array.isArray(list)) {
-                  const found = list.find((c: { email?: string; cpf?: string; codigoEmpresa?: string }) =>
-                    (c.email && c.email.toLowerCase() === cleanEmail) ||
-                    (cleanDigits.length === 11 && c.cpf && c.cpf.replace(/\D/g, '') === cleanDigits)
-                  );
-                  if (found) {
-                    if (found.email) targetEmail = found.email.toLowerCase();
-                    if (found.cpf) targetCpf = found.cpf.replace(/\D/g, '');
-                    if (found.codigoEmpresa && (!targetCodigo || targetCodigo === 'EFF-001' || targetCodigo === 'EFF60720')) {
-                      targetCodigo = found.codigoEmpresa;
-                    }
-                  }
+              const scopedKey = `efficientia_colaboradores_v3__tenant_${targetCompanyCode}`;
+              const rawScoped = localStorage.getItem(scopedKey);
+              const rawLegacy = localStorage.getItem('efficientia_colaboradores_v3');
+              const combinedList: Array<{ email?: string; cpf?: string; codigoEmpresa?: string; codigoInterno?: string }> = [];
+
+              if (rawScoped) {
+                const parsedScoped = JSON.parse(rawScoped);
+                if (Array.isArray(parsedScoped)) combinedList.push(...parsedScoped);
+              }
+              if (rawLegacy) {
+                const parsedLegacy = JSON.parse(rawLegacy);
+                if (Array.isArray(parsedLegacy)) combinedList.push(...parsedLegacy);
+              }
+
+              const found = combinedList.find((c) => {
+                const matchesIdentity =
+                  (c.email && c.email.toLowerCase() === cleanEmail) ||
+                  (cleanDigits.length === 11 && c.cpf && c.cpf.replace(/\D/g, '') === cleanDigits);
+                if (!matchesIdentity) return false;
+                const collabCompany = normalizeCompanyCode(c.codigoEmpresa);
+                return !collabCompany || collabCompany === targetCompanyCode;
+              });
+
+              if (found) {
+                if (found.email) targetEmail = found.email.toLowerCase();
+                if (found.cpf) targetCpf = found.cpf.replace(/\D/g, '');
+                if (found.codigoInterno) {
+                  targetCodigo = found.codigoInterno;
+                } else if (found.codigoEmpresa) {
+                  targetCodigo = normalizeCompanyCode(found.codigoEmpresa) || found.codigoEmpresa;
                 }
               }
             } catch {
@@ -177,12 +230,13 @@ export function Login() {
 
           const roles = await loginFuncionario({
             codigoEmpresa: targetCodigo || cleanCodigo,
+            codigoEmpresaCorporativo: targetCompanyCode,
             email: targetEmail || (cleanEmail.includes('@') ? cleanEmail : `${cleanDigits}@empresa.local`),
             cpf: targetCpf || (cleanDigits.length === 11 ? cleanDigits : '00000000000'),
             senha,
           });
 
-          localStorage.setItem('@efficientia:auth:last_codigo_empresa', cleanCodigo);
+          localStorage.setItem('@efficientia:auth:last_codigo_empresa', targetCompanyCode);
           localStorage.setItem('@efficientia:auth:last_email', cleanEmail);
           navigate(getPostLoginPath(roles), { replace: true });
           return;

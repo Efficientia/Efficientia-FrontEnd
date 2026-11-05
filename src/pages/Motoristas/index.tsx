@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useFetchData } from '../../hooks/useFetchData';
 import { funcionarioService } from '../../services/funcionarioService';
@@ -27,12 +28,21 @@ import {
   NavMotoristasIcon,
 } from '../../components/icons';
 import { checkPasswordSecurity, generateSecurePassword } from '../../utils/passwordSecurity';
+import {
+  belongsToTenant,
+  readTenantStorage,
+  resolveCurrentTenant,
+  writeTenantStorage,
+} from '../../utils/tenantScope';
 import './Motoristas.css';
 
 const STORAGE_KEY = 'efficientia_colaboradores_v3';
 
 export function Motoristas() {
   const { empresa, user, roles } = useAuth();
+
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
+  const empresaId = tenant.empresaId;
 
   const isAnalista = useMemo(() => {
     const rolesList = (roles || []).map((r) => r.toUpperCase());
@@ -48,13 +58,13 @@ export function Motoristas() {
   }, [roles, user]);
 
   const canEdit = !isAnalista;
+  const [searchParams] = useSearchParams();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') || '');
   const [tipoFiltro, setTipoFiltro] = useState<
     'todos' | 'administrador' | 'analista' | 'motorista' | 'curraleiro' | 'pecuarista' | 'manobrista'
   >('todos');
   const [statusFiltro, setStatusFiltro] = useState<'todos' | 'ativos' | 'inativos'>('todos');
-  const empresaId = empresa?.id;
 
   // Estados dos Modais
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +74,17 @@ export function Motoristas() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
+  const [copiedCodeKey, setCopiedCodeKey] = useState<string | number | null>(null);
+
+  const handleCopyCompanyCode = (code: string, key: string | number) => {
+    if (navigator.clipboard && code) {
+      navigator.clipboard.writeText(code).catch(() => {});
+    }
+    setCopiedCodeKey(key);
+    setTimeout(() => {
+      setCopiedCodeKey((prev) => (prev === key ? null : prev));
+    }, 1800);
+  };
 
   // Campos do Formulário
   const [tipoColaborador, setTipoColaborador] = useState<TipoUsuario>('motorista');
@@ -87,33 +108,42 @@ export function Motoristas() {
     [tipoColaborador]
   );
 
-  // Inicialização de colaboradores de exemplo com todos os 6 papéis
+  // Inicialização de colaboradores isolada para a empresa do usuário autenticado
   const initialCollaborators: FuncionarioEmpresaResponse[] = useMemo(() => {
     const currentUserName = user?.nome || empresa?.nomeFantasia || 'Administrador Principal';
     const currentUserEmail = user?.email || 'admin@efficientia.com';
     const currentUserCpf = ('cpf' in (user || {}) && (user as { cpf?: string }).cpf) || '012.345.678-99';
-    const currentUserCargo = user?.cargo || 'Administrador Geral';
+    const currentUserCargo = user?.cargo || (isAnalista ? 'Analista de Operações' : 'Administrador Geral');
     const currentUserId = user?.id || 1;
+    const currentUserTipo: TipoUsuario =
+      user && 'tipo' in user && user.tipo ? user.tipo : isAnalista ? 'analista' : 'administrador';
 
-    return [
-      {
-        id: currentUserId,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
-        tipo: 'administrador',
-        nome: currentUserName,
-        cpf: currentUserCpf,
-        email: currentUserEmail,
-        telefone: '(11) 98765-4321',
-        cargo: currentUserCargo,
-        ativo: true,
-        criadoEm: '2026-01-10T10:00:00Z',
-        isCurrentUser: true,
-      },
+    const currentUserRecord: FuncionarioEmpresaResponse = {
+      id: currentUserId,
+      empresaId: tenant.empresaId,
+      codigoEmpresa: tenant.codigoEmpresa,
+      tipo: currentUserTipo,
+      nome: currentUserName,
+      cpf: currentUserCpf,
+      email: currentUserEmail,
+      telefone: user?.telefone || '(11) 98765-4321',
+      cargo: currentUserCargo,
+      ativo: true,
+      criadoEm: '2026-01-10T10:00:00Z',
+      isCurrentUser: true,
+    };
+
+    // Empresas novas começam apenas com o próprio usuário autenticado, sem vazar dados da empresa demo
+    if (!tenant.isPrimaryDemoTenant) {
+      return [currentUserRecord];
+    }
+
+    const demoSeed: FuncionarioEmpresaResponse[] = [
+      currentUserRecord,
       {
         id: 101,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'administrador',
         nome: 'Carlos Henrique Ramos',
         cpf: '219.843.512-00',
@@ -125,8 +155,8 @@ export function Motoristas() {
       },
       {
         id: 102,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'motorista',
         nome: 'Jonas Ribeiro',
         cpf: '342.981.442-10',
@@ -141,8 +171,8 @@ export function Motoristas() {
       },
       {
         id: 103,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'motorista',
         nome: 'Marcos Tavares',
         cpf: '812.441.902-33',
@@ -157,8 +187,8 @@ export function Motoristas() {
       },
       {
         id: 116,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'motorista',
         nome: 'Sebastião Lima',
         cpf: '452.190.812-77',
@@ -173,8 +203,8 @@ export function Motoristas() {
       },
       {
         id: 117,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'motorista',
         nome: 'Paulo Henrique Costa',
         cpf: '612.390.441-55',
@@ -189,8 +219,8 @@ export function Motoristas() {
       },
       {
         id: 104,
-        empresaId: empresaId || 1,
-        codigoEmpresa: 'ANA-CARLA-01',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'analista',
         nome: 'Carla Mendes',
         cpf: '721.390.812-45',
@@ -203,8 +233,8 @@ export function Motoristas() {
       },
       {
         id: 112,
-        empresaId: empresaId || 1,
-        codigoEmpresa: 'ANA-EFF60720-01',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'analista',
         nome: 'Renata Bittencourt',
         cpf: '839.201.746-20',
@@ -217,8 +247,8 @@ export function Motoristas() {
       },
       {
         id: 105,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'curraleiro',
         nome: 'Tiago Ferreira',
         cpf: '552.129.831-77',
@@ -231,8 +261,8 @@ export function Motoristas() {
       },
       {
         id: 111,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'curraleiro',
         nome: 'Danilo Vasconcelos',
         cpf: '441.902.118-72',
@@ -245,8 +275,8 @@ export function Motoristas() {
       },
       {
         id: 113,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'curraleiro',
         nome: 'Renato Albuquerque',
         cpf: '772.331.009-88',
@@ -259,8 +289,8 @@ export function Motoristas() {
       },
       {
         id: 115,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'curraleiro',
         nome: 'Maurício Neves',
         cpf: '912.440.812-55',
@@ -273,8 +303,8 @@ export function Motoristas() {
       },
       {
         id: 106,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'pecuarista',
         nome: 'Roberto Silveira',
         cpf: '198.452.901-22',
@@ -287,8 +317,8 @@ export function Motoristas() {
       },
       {
         id: 108,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'pecuarista',
         nome: 'Antônio Marcos Prado',
         cpf: '334.812.901-44',
@@ -301,8 +331,8 @@ export function Motoristas() {
       },
       {
         id: 109,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'pecuarista',
         nome: 'Eduardo Fontes',
         cpf: '450.912.338-09',
@@ -315,8 +345,8 @@ export function Motoristas() {
       },
       {
         id: 110,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'pecuarista',
         nome: 'Valdir Siqueira',
         cpf: '581.204.991-32',
@@ -329,8 +359,8 @@ export function Motoristas() {
       },
       {
         id: 107,
-        empresaId: empresaId || 1,
-        codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'manobrista',
         nome: 'André Luís Moreira',
         cpf: '632.781.990-14',
@@ -343,8 +373,8 @@ export function Motoristas() {
       },
       {
         id: 114,
-        empresaId: 1,
-        codigoEmpresa: 'EFF-001',
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
         tipo: 'manobrista',
         nome: 'Marcos Vinícius Pires',
         cpf: '883.210.455-61',
@@ -356,62 +386,75 @@ export function Motoristas() {
         criadoEm: '2026-01-10T08:00:00Z',
       },
     ];
-  }, [user, empresa, empresaId]);
 
-  // Estado dos colaboradores com persistência em localStorage e sincronização inteligente
-  const [collaborators, setCollaborators] = useState<FuncionarioEmpresaResponse[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const list = [...parsed];
-          // Mescla itens padrão para garantir que nenhuma categoria fique vazia (ex: administradores ou motoristas)
-          initialCollaborators.forEach((init) => {
-            if (!list.some((item) => item.id === init.id || item.cpf === init.cpf)) {
-              list.push(init);
-            }
-          });
-          // Garante que o administrador logado esteja presente com isCurrentUser: true
-          const hasCurrent = list.some((item) => item.isCurrentUser || item.id === (user?.id || 1));
-          if (!hasCurrent && initialCollaborators.length > 0) {
-            list.unshift(initialCollaborators[0]);
-          }
-          const mapped = list.map((item) =>
-            item.id === (user?.id || 1) || item.email === (user?.email || 'admin@efficientia.com')
-              ? { ...item, isCurrentUser: true, tipo: 'administrador' as TipoUsuario }
-              : item
-          );
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
-          } catch {
-            // fallback
-          }
-          return mapped;
-        }
+    // Evita duplicar se o usuário logado já for um dos itens de demonstração
+    const deduplicated: FuncionarioEmpresaResponse[] = [];
+    demoSeed.forEach((item) => {
+      if (
+        !deduplicated.some(
+          (existing) =>
+            existing.email.toLowerCase() === item.email.toLowerCase() ||
+            existing.cpf.replace(/\D/g, '') === item.cpf.replace(/\D/g, '')
+        )
+      ) {
+        deduplicated.push(item);
       }
-    } catch {
-      // Ignora erro de parse
-    }
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialCollaborators));
-    } catch {
-      // fallback
-    }
-    return initialCollaborators;
-  });
+    });
+    return deduplicated;
+  }, [user, empresa, tenant, isAnalista]);
 
-  // Atualiza localStorage sempre que os colaboradores mudarem
-  const persistCollaborators = useCallback((newList: FuncionarioEmpresaResponse[]) => {
-    setCollaborators(newList);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-    } catch {
-      // Ignora erro de quota
-    }
-  }, []);
+  const loadTenantCollaborators = useCallback((): FuncionarioEmpresaResponse[] => {
+    const storedList = readTenantStorage<FuncionarioEmpresaResponse>(
+      STORAGE_KEY,
+      tenant,
+      initialCollaborators
+    );
+    const list = [...storedList];
 
-  // Chamada de API para sincronizar com backend se houver dados remotos
+    initialCollaborators.forEach((init) => {
+      if (
+        !list.some(
+          (item) =>
+            item.id === init.id ||
+            item.email.toLowerCase() === init.email.toLowerCase() ||
+            item.cpf.replace(/\D/g, '') === init.cpf.replace(/\D/g, '')
+        )
+      ) {
+        list.push(init);
+      }
+    });
+
+    const mapped = list.map((item) =>
+      item.id === (user?.id || 1) ||
+      (user?.email && item.email.toLowerCase() === user.email.toLowerCase())
+        ? { ...item, isCurrentUser: true }
+        : { ...item, isCurrentUser: false }
+    );
+
+    writeTenantStorage(STORAGE_KEY, tenant, mapped);
+    return mapped;
+  }, [tenant, initialCollaborators, user]);
+
+  // Estado dos colaboradores isolado por empresa (Multi-Tenant)
+  const [collaborators, setCollaborators] = useState<FuncionarioEmpresaResponse[]>(() =>
+    loadTenantCollaborators()
+  );
+
+  // Atualiza localStorage da empresa atual sempre que os colaboradores mudarem
+  const persistCollaborators = useCallback(
+    (newList: FuncionarioEmpresaResponse[]) => {
+      const scopedList = newList.map((item) => ({
+        ...item,
+        empresaId: tenant.empresaId,
+        codigoEmpresa: tenant.codigoEmpresa,
+      }));
+      setCollaborators(scopedList);
+      writeTenantStorage(STORAGE_KEY, tenant, scopedList);
+    },
+    [tenant]
+  );
+
+  // Chamada de API para sincronizar com backend estritamente para a empresa logada
   const fetchEmployees = useCallback(
     (signal: AbortSignal) =>
       empresaId ? funcionarioService.listarFuncionarios(empresaId, signal) : Promise.resolve([]),
@@ -419,18 +462,43 @@ export function Motoristas() {
   );
   const { data: remoteEmployees, isLoading, refetch } = useFetchData(fetchEmployees);
 
-  // Sincroniza com dados remotos da API mantendo o administrador logado e cadastros locais
+  // Sincroniza com dados remotos da API garantindo isolamento por empresaId / codigoEmpresa
   const allCollaborators = useMemo(() => {
-    const list = [...collaborators];
+    const normalizedTenantCode = (tenant.codigoEmpresa && tenant.codigoEmpresa !== 'EFF-001')
+      ? tenant.codigoEmpresa
+      : 'EFF60720';
+
+    const list = collaborators
+      .filter((item) => belongsToTenant(item, tenant, { allowUnscoped: false }))
+      .map((item) => ({
+        ...item,
+        codigoEmpresa:
+          !item.codigoEmpresa || item.codigoEmpresa === 'EFF-001'
+            ? normalizedTenantCode
+            : item.codigoEmpresa,
+      }));
     if (Array.isArray(remoteEmployees) && remoteEmployees.length > 0) {
-      remoteEmployees.forEach((remote) => {
-        if (!list.some((local) => local.id === remote.id || local.cpf === remote.cpf)) {
-          list.push(remote);
-        }
-      });
+      remoteEmployees
+        .filter((remote) => belongsToTenant(remote, tenant, { allowUnscoped: false }))
+        .forEach((remote) => {
+          if (
+            !list.some(
+              (local) =>
+                local.id === remote.id ||
+                local.cpf.replace(/\D/g, '') === (remote.cpf || '').replace(/\D/g, '') ||
+                local.email.toLowerCase() === (remote.email || '').toLowerCase()
+            )
+          ) {
+            list.push({
+              ...remote,
+              empresaId: tenant.empresaId,
+              codigoEmpresa: normalizedTenantCode,
+            });
+          }
+        });
     }
     return list;
-  }, [collaborators, remoteEmployees]);
+  }, [collaborators, remoteEmployees, tenant]);
 
   // Filtragem dos colaboradores
   const filteredEmployees = useMemo(() => {
@@ -457,6 +525,7 @@ export function Motoristas() {
         employee.telefone,
         employee.localVinculado,
         employee.cnhNumero,
+        employee.codigoEmpresa,
       ].some((value) => value?.toLowerCase().includes(normalized));
     });
   }, [allCollaborators, tipoFiltro, statusFiltro, query]);
@@ -580,15 +649,24 @@ export function Motoristas() {
   // Salvar formulário (Criar ou Editar)
   const handleSaveColaborador = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formNome.trim() || !formCpf.trim()) {
+    const cleanedCpf = formCpf.replace(/\D/g, '');
+    if (!formNome.trim() || !cleanedCpf) {
       setModalError('Preencha os campos obrigatórios (Nome e CPF).');
+      return;
+    }
+    if (cleanedCpf.length !== 11) {
+      setModalError('O CPF deve conter exatamente 11 dígitos numéricos.');
       return;
     }
 
     // Validação de senha para perfis com acesso
-    if (hasPassword && !editingColaborador) {
+    if (hasPassword && (!editingColaborador || formSenha.trim().length > 0)) {
       if (!formSenha.trim()) {
         setModalError('Informe a senha de acesso provisória para este colaborador.');
+        return;
+      }
+      if (formSenha.trim().length < 8) {
+        setModalError('A senha deve ter no mínimo 8 caracteres para sincronizar com o aplicativo mobile e web.');
         return;
       }
       const pwdSec = checkPasswordSecurity(formSenha);
@@ -603,13 +681,18 @@ export function Motoristas() {
     setModalSubmitting(true);
     setModalError(null);
 
+    const resolvedCompanyCode =
+      tenant.codigoEmpresa && tenant.codigoEmpresa !== 'EFF-001'
+        ? tenant.codigoEmpresa
+        : 'EFF60720';
+
     try {
       if (editingColaborador) {
         // MODO EDIÇÃO
         const updatePayload: AtualizarFuncionarioEmpresaRequest = {
           nome: formNome.trim(),
           email: formEmail.trim().toLowerCase(),
-          cpf: formCpf.replace(/\D/g, ''),
+          cpf: cleanedCpf,
           telefone: formTelefone.replace(/\D/g, ''),
           cargo: formCargo.trim() || undefined,
           tipo: tipoColaborador,
@@ -617,6 +700,8 @@ export function Motoristas() {
           cnhNumero: tipoColaborador === 'motorista' ? formCnh.trim() || null : null,
           categoriaCnh: tipoColaborador === 'motorista' ? formCatCnh : null,
           dataVencimentoCnh: tipoColaborador === 'motorista' ? formVencCnh || null : null,
+          senha: formSenha.trim() || undefined,
+          codigoEmpresa: resolvedCompanyCode,
         };
 
         const updatedList = collaborators.map((c) =>
@@ -624,29 +709,41 @@ export function Motoristas() {
             ? {
                 ...c,
                 ...updatePayload,
+                empresaId: tenant.empresaId,
+                codigoEmpresa: resolvedCompanyCode,
                 tipo: tipoColaborador,
                 cargo: formCargo.trim() || c.cargo,
+                senhaProvisoria: formSenha.trim() || c.senhaProvisoria || null,
               }
             : c
         );
         persistCollaborators(updatedList);
 
         if (empresaId) {
-          await funcionarioService.atualizarFuncionario(empresaId, editingColaborador.id, updatePayload);
+          await funcionarioService.atualizarFuncionario(
+            empresaId,
+            editingColaborador.id,
+            updatePayload,
+            resolvedCompanyCode
+          );
         }
 
-        setModalSuccess('Colaborador atualizado com sucesso!');
+        setModalSuccess(
+          `Colaborador atualizado! Código da empresa para login: ${resolvedCompanyCode}`
+        );
       } else {
         // MODO CRIAÇÃO
         const newId = Date.now();
         const newColab: FuncionarioEmpresaResponse = {
           id: newId,
-          empresaId: empresaId || 1,
-          codigoEmpresa: empresa?.codigoEmpresa || 'EFF-001',
+          empresaId: tenant.empresaId,
+          codigoEmpresa: resolvedCompanyCode,
           tipo: tipoColaborador,
           nome: formNome.trim(),
-          cpf: formCpf.replace(/\D/g, ''),
-          email: formEmail.trim().toLowerCase() || `${formNome.trim().toLowerCase().replace(/\s+/g, '.')}@operacional.local`,
+          cpf: cleanedCpf,
+          email:
+            formEmail.trim().toLowerCase() ||
+            `${formNome.trim().toLowerCase().replace(/\s+/g, '.')}@operacional.local`,
           telefone: formTelefone.replace(/\D/g, ''),
           cargo:
             formCargo.trim() ||
@@ -667,19 +764,19 @@ export function Motoristas() {
           dataVencimentoCnh: tipoColaborador === 'motorista' ? formVencCnh || null : null,
           ativo: true,
           criadoEm: new Date().toISOString(),
+          senhaProvisoria: hasPassword ? formSenha.trim() : null,
         };
 
-        const updatedList = [newColab, ...collaborators];
-        persistCollaborators(updatedList);
+        let createdColab = newColab;
 
         if (empresaId) {
           if (tipoColaborador === 'administrador') {
             await funcionarioService.cadastrarNovoAdmin(empresaId, {
               nome: formNome.trim(),
               email: formEmail.trim().toLowerCase(),
-              cpf: formCpf.replace(/\D/g, ''),
+              cpf: cleanedCpf,
               telefone: formTelefone.replace(/\D/g, '') || null,
-              senha: formSenha,
+              senha: formSenha.trim(),
               cargo: formCargo.trim() || 'Administrador',
             });
           } else {
@@ -687,20 +784,35 @@ export function Motoristas() {
               tipo: tipoColaborador,
               nome: formNome.trim(),
               email: newColab.email,
-              cpf: formCpf.replace(/\D/g, ''),
+              cpf: cleanedCpf,
               telefone: formTelefone.replace(/\D/g, ''),
-              senha: hasPassword ? formSenha : null,
+              senha: hasPassword ? formSenha.trim() : null,
               cargo: newColab.cargo,
               cnhNumero: newColab.cnhNumero,
               categoriaCnh: newColab.categoriaCnh,
               dataVencimentoCnh: newColab.dataVencimentoCnh,
               localVinculado: newColab.localVinculado,
+              codigoEmpresa: resolvedCompanyCode,
             };
-            await funcionarioService.preCadastrarFuncionario(empresaId, createPayload);
+            const apiCreated = await funcionarioService.preCadastrarFuncionario(
+              empresaId,
+              createPayload,
+              resolvedCompanyCode
+            );
+            createdColab = {
+              ...newColab,
+              id: apiCreated.id || newColab.id,
+              codigoEmpresa: apiCreated.codigoEmpresa || resolvedCompanyCode,
+            };
           }
         }
 
-        setModalSuccess('Colaborador cadastrado com sucesso!');
+        const updatedList = [createdColab, ...collaborators];
+        persistCollaborators(updatedList);
+
+        setModalSuccess(
+          `Colaborador cadastrado com sucesso! Código da empresa para login: ${createdColab.codigoEmpresa}`
+        );
       }
 
       setTimeout(() => {
@@ -924,6 +1036,7 @@ export function Motoristas() {
                 <tr>
                   <th scope="col">Colaborador</th>
                   <th scope="col">Perfil / Papel</th>
+                  <th scope="col">Código da Empresa</th>
                   <th scope="col">Acesso / Modo</th>
                   <th scope="col">CPF / Documento</th>
                   <th scope="col">Contato / Local</th>
@@ -936,6 +1049,10 @@ export function Motoristas() {
               <tbody>
                 {filteredEmployees.map((colaborador) => {
                   const roleWithPwd = ['administrador', 'analista', 'motorista'].includes(colaborador.tipo);
+                  const displayCompanyCode =
+                    !colaborador.codigoEmpresa || colaborador.codigoEmpresa === 'EFF-001'
+                      ? tenant.codigoEmpresa || 'EFF60720'
+                      : colaborador.codigoEmpresa;
 
                   return (
                     <tr key={colaborador.id}>
@@ -964,6 +1081,37 @@ export function Motoristas() {
                         <span className={`emp-badge emp-badge-${colaborador.tipo}`}>
                           {colaborador.tipo.toUpperCase()}
                         </span>
+                      </td>
+
+                      {/* CÓDIGO DA EMPRESA (PARA LOGIN MOBILE / WEB) */}
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCompanyCode(displayCompanyCode, colaborador.id)}
+                          title="Clique para copiar o código da empresa usado no login"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            border: '1px solid rgba(15, 81, 174, 0.25)',
+                            background: 'rgba(15, 81, 174, 0.08)',
+                            color: '#0f51ae',
+                            fontFamily: 'monospace',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          <span>{displayCompanyCode}</span>
+                          {copiedCodeKey === colaborador.id && (
+                            <span style={{ fontSize: '0.68rem', color: '#10b981', fontFamily: 'sans-serif' }}>
+                              Copiado!
+                            </span>
+                          )}
+                        </button>
                       </td>
 
                       {/* MODO DE ACESSO (Com senha vs Apenas assinatura) */}
@@ -1148,6 +1296,46 @@ export function Motoristas() {
               )}
 
               <form onSubmit={handleSaveColaborador} className="modal-form">
+                {/* CÓDIGO DA EMPRESA VINCULADO (PARA LOGIN MOBILE / WEB) */}
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label htmlFor="driver-company-code" style={{ margin: 0 }}>
+                      Código da Empresa (Necessário para Login no App e Web)
+                    </label>
+                    <button
+                      type="button"
+                      className="driver-pwd-gen-btn"
+                      onClick={() =>
+                        handleCopyCompanyCode(
+                          tenant.codigoEmpresa && tenant.codigoEmpresa !== 'EFF-001'
+                            ? tenant.codigoEmpresa
+                            : 'EFF60720',
+                          'modal-code'
+                        )
+                      }
+                    >
+                      <span>{copiedCodeKey === 'modal-code' ? 'Código copiado!' : 'Copiar código'}</span>
+                    </button>
+                  </div>
+                  <input
+                    id="driver-company-code"
+                    type="text"
+                    readOnly
+                    value={
+                      tenant.codigoEmpresa && tenant.codigoEmpresa !== 'EFF-001'
+                        ? tenant.codigoEmpresa
+                        : 'EFF60720'
+                    }
+                    style={{
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      color: '#0f51ae',
+                      backgroundColor: 'rgba(15, 81, 174, 0.06)',
+                    }}
+                  />
+                </div>
+
                 {/* TIPO DE ACESSO / PERFIL */}
                 <div className="form-group">
                   <label htmlFor="driver-tipo">Tipo de Função / Perfil *</label>
@@ -1347,8 +1535,8 @@ export function Motoristas() {
                     </div>
                     <small style={{ fontSize: '0.74rem', color: '#7889a3' }}>
                       {tipoColaborador === 'motorista'
-                        ? 'O motorista usará esta senha de acesso no aplicativo mobile através de seu fluxo próprio de login.'
-                        : 'O colaborador usará esta credencial para acesso ao painel web.'}
+                        ? 'O motorista utilizará esta senha junto ao Código da Empresa, CPF e e-mail para fazer login no aplicativo mobile.'
+                        : 'O colaborador utilizará esta senha junto ao Código da Empresa e CPF/e-mail para acessar o painel web.'}
                     </small>
                   </div>
                 )}

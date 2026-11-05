@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { relatorioService } from '../../services/relatorioService';
 import type { RelatorioViagemResponse, CriarRelatorioViagemRequest } from '../../types/relatorio';
 import type { CaminhaoRelatorioResponse } from '../../types/frota';
+import { belongsToTenant, resolveCurrentTenant } from '../../utils/tenantScope';
+import {
+  downloadRouteReportPdf,
+  loadSignatureDataUrls,
+  type SignatureRole,
+} from '../../utils/routeReportPdf';
 import {
   CheckIcon,
   CloseIcon,
@@ -24,6 +31,8 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
   onClose,
   onAuditCompleted,
 }) => {
+  const { user, empresa } = useAuth();
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
   const [report, setReport] = useState<RelatorioViagemResponse | null>(null);
   const [caminhaoInfo, setCaminhaoInfo] = useState<CaminhaoRelatorioResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,11 +41,13 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
   // Ações de parecer
   const [parecerTexto, setParecerTexto] = useState('');
   const [submittingAction, setSubmittingAction] = useState<'aprovar' | 'reprovar' | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  // Estados de carregamento de assinaturas
-  const [sigErrors, setSigErrors] = useState<Record<string, boolean>>({});
+  // Estados de carregamento de assinaturas autenticadas (com recorte e tinta azul #0E377A)
+  const [signatureUrls, setSignatureUrls] = useState<Partial<Record<SignatureRole, string>>>({});
+  const [loadingSignatures, setLoadingSignatures] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +63,25 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
         if (!active) return;
 
         if (reportRes.status === 'fulfilled') {
-          setReport(reportRes.value);
+          const loadedReport = reportRes.value;
+          if (
+            typeof loadedReport.empresaId === 'number' &&
+            loadedReport.empresaId > 0 &&
+            !belongsToTenant(loadedReport, tenant, { allowUnscoped: true })
+          ) {
+            setReport(null);
+            setError('Acesso negado: este diário de rota pertence a outra empresa.');
+            return;
+          }
+          setReport(loadedReport);
+          setLoadingSignatures(true);
+          loadSignatureDataUrls(loadedReport)
+            .then((urls) => {
+              if (active) setSignatureUrls(urls);
+            })
+            .finally(() => {
+              if (active) setLoadingSignatures(false);
+            });
         } else {
           const msg = reportRes.reason instanceof Error ? reportRes.reason.message : 'Falha ao carregar relatório.';
           setError(msg);
@@ -74,7 +103,7 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
     return () => {
       active = false;
     };
-  }, [reportId]);
+  }, [reportId, tenant]);
 
   const handleAuditoria = async (novoStatus: 'aprovar' | 'reprovar') => {
     if (novoStatus === 'reprovar' && !parecerTexto.trim()) {
@@ -131,8 +160,20 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
     }
   };
 
-  const handleSigError = (role: string) => {
-    setSigErrors((prev) => ({ ...prev, [role]: true }));
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      setActionError(null);
+      await downloadRouteReportPdf(reportId, {
+        report: report || initialReport || { id: reportId },
+        caminhao: caminhaoInfo,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao gerar o PDF do diário de rota.';
+      setActionError(msg);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const currentStatus = (report?.status || initialReport?.status || 'pendente').toLowerCase();
@@ -160,11 +201,12 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
             <button
               type="button"
               className="audit-print-btn"
-              onClick={() => window.print()}
-              title="Imprimir relatório físico / Salvar PDF"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              title="Baixar PDF oficial do Diário de Rota (idêntico ao aplicativo mobile)"
             >
               <ExportIcon size={16} />
-              <span>Imprimir / PDF</span>
+              <span>{downloadingPdf ? 'Gerando PDF...' : 'Baixar PDF'}</span>
             </button>
             <button
               type="button"
@@ -343,7 +385,7 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
                       <ul>
                         {report.paradasImprevistas.map((p, idx) => (
                           <li key={p.id || idx}>
-                            Motivo: <em>{p.motivo}</em> ({p.dataHoraInicio} até {p.dataHoraFim})
+                            Motivo: <em>{p.descricaoMotivo || p.motivo}</em> ({p.dataHoraInicio} até {p.dataHoraFim})
                           </li>
                         ))}
                       </ul>
@@ -399,16 +441,19 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
                   <div className="audit-signature-card">
                     <span className="sig-role">1. Pecuarista (Origem)</span>
                     <div className="sig-image-box">
-                      {!sigErrors['pecuarista'] ? (
+                      {signatureUrls.pecuarista ? (
                         <img
-                          src={relatorioService.obterUrlAssinatura(report.id, 'pecuarista')}
+                          src={signatureUrls.pecuarista}
                           alt="Assinatura do Pecuarista"
-                          onError={() => handleSigError('pecuarista')}
                         />
                       ) : (
                         <div className="sig-placeholder">
                           <CheckIcon size={20} />
-                          <span>Assinatura registrada eletronicamente</span>
+                          <span>
+                            {loadingSignatures
+                              ? 'Carregando assinatura...'
+                              : 'Assinatura registrada eletronicamente'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -419,16 +464,19 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
                   <div className="audit-signature-card">
                     <span className="sig-role">2. Motorista (Transporte)</span>
                     <div className="sig-image-box">
-                      {!sigErrors['motorista'] ? (
+                      {signatureUrls.motorista ? (
                         <img
-                          src={relatorioService.obterUrlAssinatura(report.id, 'motorista')}
+                          src={signatureUrls.motorista}
                           alt="Assinatura do Motorista"
-                          onError={() => handleSigError('motorista')}
                         />
                       ) : (
                         <div className="sig-placeholder">
                           <CheckIcon size={20} />
-                          <span>Assinatura registrada eletronicamente</span>
+                          <span>
+                            {loadingSignatures
+                              ? 'Carregando assinatura...'
+                              : 'Assinatura registrada eletronicamente'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -439,16 +487,19 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
                   <div className="audit-signature-card">
                     <span className="sig-role">3. Manobrista (Pátio)</span>
                     <div className="sig-image-box">
-                      {!sigErrors['manobrista'] ? (
+                      {signatureUrls.manobrista ? (
                         <img
-                          src={relatorioService.obterUrlAssinatura(report.id, 'manobrista')}
+                          src={signatureUrls.manobrista}
                           alt="Assinatura do Manobrista"
-                          onError={() => handleSigError('manobrista')}
                         />
                       ) : (
                         <div className="sig-placeholder">
                           <CheckIcon size={20} />
-                          <span>Assinatura registrada eletronicamente</span>
+                          <span>
+                            {loadingSignatures
+                              ? 'Carregando assinatura...'
+                              : 'Assinatura registrada eletronicamente'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -459,16 +510,19 @@ export const ReportAuditModal: React.FC<ReportAuditModalProps> = ({
                   <div className="audit-signature-card">
                     <span className="sig-role">4. Curraleiro (Desembarque)</span>
                     <div className="sig-image-box">
-                      {!sigErrors['curraleiro'] ? (
+                      {signatureUrls.curraleiro ? (
                         <img
-                          src={relatorioService.obterUrlAssinatura(report.id, 'curraleiro')}
+                          src={signatureUrls.curraleiro}
                           alt="Assinatura do Curraleiro"
-                          onError={() => handleSigError('curraleiro')}
                         />
                       ) : (
                         <div className="sig-placeholder">
                           <CheckIcon size={20} />
-                          <span>Assinatura registrada eletronicamente</span>
+                          <span>
+                            {loadingSignatures
+                              ? 'Carregando assinatura...'
+                              : 'Assinatura registrada eletronicamente'}
+                          </span>
                         </div>
                       )}
                     </div>

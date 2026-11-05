@@ -1,9 +1,24 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AuthenticatedLayout } from '../../components/Layout/AuthenticatedLayout';
 import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
+import { useAuth } from '../../hooks/useAuth';
+import { useFetchData } from '../../hooks/useFetchData';
+import { funcionarioService } from '../../services/funcionarioService';
+import { caminhaoService } from '../../services/caminhaoService';
 import type { FuncionarioEmpresaResponse } from '../../types/funcionario';
 import type { CaminhaoResponse } from '../../types/frota';
+import {
+  belongsToTenant,
+  readTenantStorage,
+  resolveCurrentTenant,
+} from '../../utils/tenantScope';
+import {
+  DEMO_COLLABORATORS_SEED,
+  DEMO_FAZENDAS_SEED,
+  DEMO_FLEET_SEED,
+  DEMO_FRIGORIFICOS_SEED,
+} from '../../utils/tenantSeeds';
 import {
   ShieldCheckIcon,
   SearchIcon,
@@ -24,6 +39,8 @@ import './CadastrosConsulta.css';
 // ============================================================================
 export interface FazendaModel {
   id: number;
+  empresaId?: number;
+  codigoEmpresa?: string | null;
   nome: string;
   razaoSocial?: string | null;
   cnpj?: string | null;
@@ -40,6 +57,8 @@ export interface FazendaModel {
 
 export interface UnidadeFrigorificaModel {
   id: number;
+  empresaId?: number;
+  codigoEmpresa?: string | null;
   nome: string;
   razaoSocial?: string | null;
   cnpj?: string | null;
@@ -63,424 +82,17 @@ const STORAGE_FROTA = 'efficientia_frota_v3';
 const STORAGE_FAZENDAS = 'efficientia_fazendas_v4';
 const STORAGE_FRIGORIFICOS = 'efficientia_frigorificos_v4';
 
-// DEFAULT FALLBACKS
-const DEFAULT_COLLABORATORS: FuncionarioEmpresaResponse[] = [
-  {
-    id: 1,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'administrador',
-    nome: 'Carlos Ramos de Oliveira',
-    cpf: '219.843.512-00',
-    email: 'carlos.ramos@empresa.com',
-    telefone: '(11) 97123-4567',
-    cargo: 'Gerente Geral de Logística',
-    ativo: true,
-    criadoEm: '2026-02-15T09:30:00Z',
-  },
-  {
-    id: 102,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'motorista',
-    nome: 'Jonas Ribeiro',
-    cpf: '342.981.442-10',
-    email: 'jonas.ribeiro@empresa.com',
-    telefone: '(67) 99823-4411',
-    cargo: 'Motorista Carreteiro',
-    cnhNumero: '98765432100',
-    categoriaCnh: 'E',
-    dataVencimentoCnh: '2027-08-15',
-    ativo: true,
-    criadoEm: '2026-03-01T14:20:00Z',
-  },
-  {
-    id: 103,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'motorista',
-    nome: 'Marcos Tavares',
-    cpf: '812.441.902-33',
-    email: 'marcos.tavares@empresa.com',
-    telefone: '(65) 99182-3091',
-    cargo: 'Motorista Bi-trem',
-    cnhNumero: '12345678901',
-    categoriaCnh: 'E',
-    dataVencimentoCnh: '2026-12-10',
-    ativo: true,
-    criadoEm: '2026-03-05T11:00:00Z',
-  },
-  {
-    id: 116,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'motorista',
-    nome: 'Sebastião Lima',
-    cpf: '452.190.812-77',
-    email: 'sebastiao.lima@empresa.com',
-    telefone: '(66) 99654-7722',
-    cargo: 'Motorista Rodo-Trem Boiadeiro',
-    cnhNumero: '45678901234',
-    categoriaCnh: 'E',
-    dataVencimentoCnh: '2027-04-20',
-    ativo: true,
-    criadoEm: '2026-03-08T09:15:00Z',
-  },
-  {
-    id: 104,
-    empresaId: 1,
-    codigoEmpresa: 'ANA-CARLA-01',
-    tipo: 'analista',
-    nome: 'Carla Mendes',
-    cpf: '721.390.812-45',
-    email: 'carla.mendes@empresa.com',
-    telefone: '(65) 99341-8722',
-    cargo: 'Analista de Bem-Estar Animal',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 112,
-    empresaId: 1,
-    codigoEmpresa: 'ANA-EFF60720-01',
-    tipo: 'analista',
-    nome: 'Renata Bittencourt',
-    cpf: '839.201.746-20',
-    email: 'renata.analista@efficientia.com.br',
-    telefone: '(17) 99712-4040',
-    cargo: 'Analista de Qualidade e Bem-Estar',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 105,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'curraleiro',
-    nome: 'Tiago Ferreira',
-    cpf: '552.129.831-77',
-    email: 'tiago.ferreira@frigorifico.com',
-    telefone: '(67) 99654-1289',
-    cargo: 'Curraleiro de Desembarque',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 111,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'curraleiro',
-    nome: 'Danilo Vasconcelos',
-    cpf: '441.902.118-72',
-    email: 'danilo.vasconcelos@marfrig.com.br',
-    telefone: '(14) 99812-7788',
-    cargo: 'Curraleiro SIF',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 106,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'pecuarista',
-    nome: 'Roberto Silveira',
-    cpf: '198.452.901-22',
-    email: 'roberto@fazendaboigordo.com.br',
-    telefone: '(66) 99912-4450',
-    cargo: 'Produtor Rural / Pecuarista',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 108,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'pecuarista',
-    nome: 'Antônio Marcos Prado',
-    cpf: '334.812.901-44',
-    email: 'antonio.prado@santamaria.agr.br',
-    telefone: '(18) 99721-3344',
-    cargo: 'Produtor Rural / Pecuarista',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 109,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'pecuarista',
-    nome: 'Eduardo Fontes',
-    cpf: '450.912.338-09',
-    email: 'eduardo@estreladosul.com.br',
-    telefone: '(67) 99988-1234',
-    cargo: 'Produtor Rural / Pecuarista',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 110,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'pecuarista',
-    nome: 'Valdir Siqueira',
-    cpf: '581.204.991-32',
-    email: 'valdir@araguaiapecuaria.com.br',
-    telefone: '(66) 99844-3321',
-    cargo: 'Produtor Rural / Pecuarista',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-  {
-    id: 107,
-    empresaId: 1,
-    codigoEmpresa: 'EFF-001',
-    tipo: 'manobrista',
-    nome: 'André Luís Moreira',
-    cpf: '632.781.990-14',
-    email: 'andre.moreira@patio.com',
-    telefone: '(65) 98841-7720',
-    cargo: 'Manobrista de Pátio SIF',
-    ativo: true,
-    criadoEm: '2026-01-10T08:00:00Z',
-  },
-];
-
-const DEFAULT_FLEET: CaminhaoResponse[] = [
-  {
-    id: 1,
-    tipo: 'CONJUNTO',
-    placa: 'BRA2E19',
-    placaCarreta: 'KRM4B22',
-    empresaId: 1,
-    ativo: true,
-    dataVencimentoInspecao: '2027-05-10',
-    kmAcumulado: 148500,
-    capacidadeCabecas: 42,
-    marca: 'Scania',
-    modelo: 'R450 6x2',
-    anoFabricacao: 2023,
-    tipoCarreta: '2 Pisos Randon Boiadeira',
-    statusUso: 'EM_USO',
-    relatorioAtualId: 301,
-    motoristaAtualId: 102,
-    motoristaAtualNome: 'Jonas Ribeiro',
-  },
-  {
-    id: 2,
-    tipo: 'CONJUNTO',
-    placa: 'MTB8C34',
-    placaCarreta: 'JLS9A88',
-    empresaId: 1,
-    ativo: true,
-    dataVencimentoInspecao: '2027-09-22',
-    kmAcumulado: 82300,
-    capacidadeCabecas: 64,
-    marca: 'Volvo',
-    modelo: 'FH 540 6x4',
-    anoFabricacao: 2024,
-    tipoCarreta: '3 Pisos Tri-trem Boiadeiro',
-    statusUso: 'EM_USO',
-    relatorioAtualId: 302,
-    motoristaAtualId: 103,
-    motoristaAtualNome: 'Marcos Tavares',
-  },
-  {
-    id: 3,
-    tipo: 'CONJUNTO',
-    placa: 'SPX5H77',
-    placaCarreta: 'PRT2F41',
-    empresaId: 1,
-    ativo: true,
-    dataVencimentoInspecao: '2027-02-14',
-    kmAcumulado: 215400,
-    capacidadeCabecas: 72,
-    marca: 'Mercedes-Benz',
-    modelo: 'Actros 2651',
-    anoFabricacao: 2022,
-    tipoCarreta: 'Rodo-trem 9 Eixos Boiadeiro',
-    statusUso: 'EM_USO',
-    relatorioAtualId: 303,
-    motoristaAtualId: 116,
-    motoristaAtualNome: 'Sebastião Lima',
-  },
-  {
-    id: 4,
-    tipo: 'CONJUNTO',
-    placa: 'MSK3D12',
-    placaCarreta: 'MSL7K90',
-    empresaId: 1,
-    ativo: true,
-    dataVencimentoInspecao: '2027-11-05',
-    kmAcumulado: 45000,
-    capacidadeCabecas: 38,
-    marca: 'DAF',
-    modelo: 'XF 480',
-    anoFabricacao: 2024,
-    tipoCarreta: 'Carreta Boiadeira 3 Eixos',
-    statusUso: 'DISPONIVEL',
-    relatorioAtualId: null,
-    motoristaAtualId: null,
-    motoristaAtualNome: null,
-  },
-];
-
-const DEFAULT_FAZENDAS: FazendaModel[] = [
-  {
-    id: 1,
-    nome: 'Fazenda Boi Gordo',
-    razaoSocial: 'Agropecuária Boi Gordo Ltda',
-    cnpj: '08.123.456/0001-90',
-    inscricaoEstadual: '13.442.810-9',
-    pecuaristaId: 106,
-    cidade: 'Barra do Garças',
-    uf: 'MT',
-    logradouro: 'Rodovia BR-070, KM 48 - Zona Rural',
-    numero: 'S/N',
-    cep: '78600-000',
-    capacidadeEmbarqueCabecas: 450,
-    ativo: true,
-  },
-  {
-    id: 2,
-    nome: 'Fazenda Santa Maria',
-    razaoSocial: 'Agro Santa Maria Participações',
-    cnpj: '14.887.652/0001-14',
-    inscricaoEstadual: '18.912.334-0',
-    pecuaristaId: 108,
-    cidade: 'Andradina',
-    uf: 'SP',
-    logradouro: 'Estrada Municipal AND-020, KM 12',
-    numero: 'S/N',
-    cep: '16900-000',
-    capacidadeEmbarqueCabecas: 380,
-    ativo: true,
-  },
-  {
-    id: 3,
-    nome: 'Fazenda Estrela do Sul',
-    razaoSocial: 'Pecuária Estrela do Sul',
-    cnpj: '22.341.988/0001-55',
-    inscricaoEstadual: '28.114.770-3',
-    pecuaristaId: 109,
-    cidade: 'Três Lagoas',
-    uf: 'MS',
-    logradouro: 'Rodovia BR-262, KM 85',
-    numero: 'S/N',
-    cep: '79600-000',
-    capacidadeEmbarqueCabecas: 300,
-    ativo: true,
-  },
-  {
-    id: 4,
-    nome: 'Fazenda Vale do Araguaia',
-    razaoSocial: 'Agropecuária Araguaia Ltda',
-    cnpj: '31.908.122/0001-08',
-    inscricaoEstadual: '13.998.411-2',
-    pecuaristaId: 110,
-    cidade: 'São Félix do Araguaia',
-    uf: 'MT',
-    logradouro: 'Estrada da Balsa, Linha 3',
-    numero: 'S/N',
-    cep: '78670-000',
-    capacidadeEmbarqueCabecas: 520,
-    ativo: true,
-  },
-];
-
-const DEFAULT_FRIGORIFICOS: UnidadeFrigorificaModel[] = [
-  {
-    id: 1,
-    nome: 'JBS Frigorífico SIF 450',
-    razaoSocial: 'JBS S.A.',
-    cnpj: '02.916.265/0001-00',
-    registroSif: 'SIF 450',
-    analistaId: 104,
-    curraleiroId: 105,
-    manobristaId: 107,
-    cidade: 'Campo Grande',
-    uf: 'MS',
-    logradouro: 'Av. Duque de Caxias, 5500 - Serradinho',
-    numero: '5500',
-    cep: '79103-900',
-    capacidadeAbateDiario: 2400,
-    qtdCurrais: 12,
-    ativo: true,
-  },
-  {
-    id: 2,
-    nome: 'Marfrig Global Foods SIF 2015',
-    razaoSocial: 'Marfrig Global Foods S.A.',
-    cnpj: '03.853.896/0001-40',
-    registroSif: 'SIF 2015',
-    analistaId: 104,
-    curraleiroId: 111,
-    manobristaId: 107,
-    cidade: 'Promissão',
-    uf: 'SP',
-    logradouro: 'Rodovia Marechal Rondon, KM 452',
-    numero: 'S/N',
-    cep: '16370-000',
-    capacidadeAbateDiario: 1800,
-    qtdCurrais: 8,
-    ativo: true,
-  },
-  {
-    id: 3,
-    nome: 'Minerva Foods SIF 1940',
-    razaoSocial: 'Minerva S.A.',
-    cnpj: '67.620.377/0001-30',
-    registroSif: 'SIF 1940',
-    analistaId: 112,
-    curraleiroId: 105,
-    manobristaId: 107,
-    cidade: 'Barretos',
-    uf: 'SP',
-    logradouro: 'Av. Antônio F. de Rezende, 100',
-    numero: '100',
-    cep: '14781-545',
-    capacidadeAbateDiario: 2100,
-    qtdCurrais: 10,
-    ativo: true,
-  },
-  {
-    id: 4,
-    nome: 'Frigorífico Barra Mansa SIF 324',
-    razaoSocial: 'Barra Mansa Alimentos S.A.',
-    cnpj: '48.910.422/0001-88',
-    registroSif: 'SIF 324',
-    analistaId: 104,
-    curraleiroId: 111,
-    manobristaId: 107,
-    cidade: 'Rondonópolis',
-    uf: 'MT',
-    logradouro: 'Rodovia BR-364, KM 204',
-    numero: 'S/N',
-    cep: '78700-000',
-    capacidadeAbateDiario: 1500,
-    qtdCurrais: 6,
-    ativo: true,
-  },
-];
-
-// Helper para ler LocalStorage de forma resiliente
-function readStored<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed as T;
-      }
-    }
-  } catch {
-    // Retorna fallback
-  }
-  return fallback;
-}
+// DEFAULT FALLBACKS (sincronizados com os cadastros administrativos da empresa demo)
+const DEFAULT_COLLABORATORS: FuncionarioEmpresaResponse[] = DEMO_COLLABORATORS_SEED;
+const DEFAULT_FLEET: CaminhaoResponse[] = DEMO_FLEET_SEED;
+const DEFAULT_FAZENDAS: FazendaModel[] = DEMO_FAZENDAS_SEED;
+const DEFAULT_FRIGORIFICOS: UnidadeFrigorificaModel[] = DEMO_FRIGORIFICOS_SEED;
 
 type TabType = 'usuarios' | 'frota' | 'fazendas' | 'frigorificos';
 
 export function CadastrosConsulta() {
+  const { user, empresa } = useAuth();
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTabParam = searchParams.get('tab') as TabType | null;
 
@@ -497,19 +109,83 @@ export function CadastrosConsulta() {
     setSearchParams({ tab });
   };
 
-  // Carrega coleções persistidas
-  const [collaborators] = useState<FuncionarioEmpresaResponse[]>(() =>
-    readStored(STORAGE_COLABORADORES, DEFAULT_COLLABORATORS)
+  // Carrega coleções persistidas escopadas exclusivamente pela empresa logada
+  const localCollaborators = useMemo<FuncionarioEmpresaResponse[]>(
+    () =>
+      readTenantStorage(
+        STORAGE_COLABORADORES,
+        tenant,
+        tenant.isPrimaryDemoTenant ? DEFAULT_COLLABORATORS : []
+      ),
+    [tenant]
   );
-  const [fleet] = useState<CaminhaoResponse[]>(() =>
-    readStored(STORAGE_FROTA, DEFAULT_FLEET)
+
+  const localFleet = useMemo<CaminhaoResponse[]>(
+    () =>
+      readTenantStorage(
+        STORAGE_FROTA,
+        tenant,
+        tenant.isPrimaryDemoTenant ? DEFAULT_FLEET : []
+      ),
+    [tenant]
   );
-  const [fazendas] = useState<FazendaModel[]>(() =>
-    readStored(STORAGE_FAZENDAS, DEFAULT_FAZENDAS)
+
+  const fazendas = useMemo<FazendaModel[]>(
+    () =>
+      readTenantStorage(
+        STORAGE_FAZENDAS,
+        tenant,
+        tenant.isPrimaryDemoTenant ? DEFAULT_FAZENDAS : []
+      ),
+    [tenant]
   );
-  const [frigorificos] = useState<UnidadeFrigorificaModel[]>(() =>
-    readStored(STORAGE_FRIGORIFICOS, DEFAULT_FRIGORIFICOS)
+
+  const frigorificos = useMemo<UnidadeFrigorificaModel[]>(
+    () =>
+      readTenantStorage(
+        STORAGE_FRIGORIFICOS,
+        tenant,
+        tenant.isPrimaryDemoTenant ? DEFAULT_FRIGORIFICOS : []
+      ),
+    [tenant]
   );
+
+  // Também sincroniza colaboradores e frota da API restritos à empresa logada
+  const fetchRemoteEmployees = useCallback(
+    (signal: AbortSignal) => funcionarioService.listarFuncionarios(tenant.empresaId, signal),
+    [tenant.empresaId]
+  );
+  const { data: remoteEmployees } = useFetchData(fetchRemoteEmployees);
+
+  const fetchRemoteFleet = useCallback(
+    (signal: AbortSignal) => caminhaoService.listar({ empresaId: tenant.empresaId }, signal),
+    [tenant.empresaId]
+  );
+  const { data: remoteFleet } = useFetchData(fetchRemoteFleet);
+
+  const collaborators = useMemo<FuncionarioEmpresaResponse[]>(() => {
+    const map = new Map<number, FuncionarioEmpresaResponse>();
+    localCollaborators.forEach((item) => map.set(item.id, item));
+    (remoteEmployees ?? []).forEach((remote) => {
+      if (remote && typeof remote.id === 'number' && belongsToTenant(remote, tenant, { allowUnscoped: false })) {
+        const existing = map.get(remote.id);
+        map.set(remote.id, { ...remote, ...existing, id: remote.id });
+      }
+    });
+    return Array.from(map.values());
+  }, [localCollaborators, remoteEmployees, tenant]);
+
+  const fleet = useMemo<CaminhaoResponse[]>(() => {
+    const map = new Map<number, CaminhaoResponse>();
+    localFleet.forEach((item) => map.set(item.id, item));
+    (remoteFleet ?? []).forEach((remote) => {
+      if (remote && typeof remote.id === 'number' && belongsToTenant(remote, tenant, { allowUnscoped: false })) {
+        const existing = map.get(remote.id);
+        map.set(remote.id, { ...remote, ...existing, id: remote.id });
+      }
+    });
+    return Array.from(map.values());
+  }, [localFleet, remoteFleet, tenant]);
 
   // Mapas para resolução de nomes (evita mostrar IDs do banco)
   const userMap = useMemo(() => {
@@ -825,6 +501,7 @@ export function CadastrosConsulta() {
                     <tr>
                       <th scope="col">Colaborador / Usuário</th>
                       <th scope="col">Papel / Perfil</th>
+                      <th scope="col">Código da Empresa</th>
                       <th scope="col">Documento & Contato</th>
                       <th scope="col">Qualificação / Detalhes</th>
                       <th scope="col">Acesso</th>
@@ -835,7 +512,7 @@ export function CadastrosConsulta() {
                   <tbody>
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="cadastros-empty-state">
                             <InfoIcon size={36} className="cadastros-empty-icon" />
                             <div className="cadastros-empty-title">Nenhum colaborador localizado</div>
@@ -846,7 +523,13 @@ export function CadastrosConsulta() {
                         </td>
                       </tr>
                     ) : (
-                      filteredUsers.map((colab) => (
+                      filteredUsers.map((colab) => {
+                        const displayCode =
+                          !colab.codigoEmpresa || colab.codigoEmpresa === 'EFF-001'
+                            ? tenant.codigoEmpresa || 'EFF60720'
+                            : colab.codigoEmpresa;
+
+                        return (
                         <tr key={colab.id}>
                           <td>
                             <div className="cadastros-entity-cell">
@@ -865,6 +548,24 @@ export function CadastrosConsulta() {
                               {colab.tipo === 'curraleiro' && 'Curraleiro'}
                               {colab.tipo === 'pecuarista' && 'Pecuarista'}
                               {colab.tipo === 'manobrista' && 'Manobrista'}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                border: '1px solid rgba(15, 81, 174, 0.25)',
+                                background: 'rgba(15, 81, 174, 0.08)',
+                                color: '#0f51ae',
+                                fontFamily: 'monospace',
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                letterSpacing: '0.04em',
+                              }}
+                            >
+                              {displayCode}
                             </span>
                           </td>
                           <td>
@@ -921,7 +622,8 @@ export function CadastrosConsulta() {
                             </button>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

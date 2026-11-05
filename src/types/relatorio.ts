@@ -3,6 +3,7 @@ export type StatusRelatorioViagem = 'rascunho' | 'pendente' | 'aprovado' | 'conc
 export interface ParadaImprevistaDto {
   id?: number | null;
   motivo: string;
+  descricaoMotivo?: string | null;
   dataHoraInicio: string;
   dataHoraFim: string;
 }
