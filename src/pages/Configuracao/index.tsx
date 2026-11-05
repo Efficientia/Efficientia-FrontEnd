@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthenticatedLayout } from '../../components/Layout/AuthenticatedLayout';
 import { useAuth } from '../../hooks/useAuth';
@@ -6,6 +6,12 @@ import { useTheme, type FontSizeScale } from '../../contexts/ThemeContext';
 import { empresaService } from '../../services/empresaService';
 import type { EmpresaResponse } from '../../types/empresa';
 import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
+import {
+  getTenantStorageKey,
+  normalizeCompanyCode,
+  resolveCurrentTenant,
+  type TenantIdentity,
+} from '../../utils/tenantScope';
 import {
   UploadIcon,
   CheckIcon,
@@ -68,7 +74,7 @@ const DEFAULT_CONFIG: ConfigurationData = {
   razaoSocial: 'Transboi Transportes Rodoviários Ltda.',
   nomeFantasia: 'Transboi Logística Viva',
   cnpj: '12.345.678/0001-90',
-  codigoInterno: 'TB884210',
+  codigoInterno: 'EFF60720',
   emailCorporativo: 'operacoes@transboi.com.br',
   telefone: '(65) 3612-4000',
   cep: '78000-000',
@@ -96,17 +102,46 @@ const DEFAULT_CONFIG: ConfigurationData = {
   espacamentoTexto: false,
 };
 
-function loadStoredConfiguration(empresa?: EmpresaResponse | null): ConfigurationData {
+function loadStoredConfiguration(
+  tenant: TenantIdentity,
+  empresa?: EmpresaResponse | null
+): ConfigurationData {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const scopedKey = getTenantStorageKey(STORAGE_KEY, tenant);
+    const saved =
+      localStorage.getItem(scopedKey) ||
+      (tenant.isPrimaryDemoTenant ? localStorage.getItem(STORAGE_KEY) : null);
     const parsed = saved ? (JSON.parse(saved) as Partial<ConfigurationData>) : {};
+    const baseConfig: ConfigurationData = tenant.isPrimaryDemoTenant
+      ? DEFAULT_CONFIG
+      : {
+          ...DEFAULT_CONFIG,
+          razaoSocial: empresa?.razaoSocial || empresa?.nomeEmpresa || '',
+          nomeFantasia: empresa?.nomeFantasia || empresa?.nomeEmpresa || '',
+          cnpj: empresa?.cnpj || '',
+          codigoInterno: tenant.codigoEmpresa,
+          emailCorporativo: empresa?.emailCorporativo || empresa?.email || '',
+          telefone: empresa?.telefone || '',
+          cep: empresa?.cep || empresa?.endereco?.cep || '',
+          logradouro: empresa?.logradouro || empresa?.endereco?.logradouro || '',
+          numero: empresa?.numero || empresa?.endereco?.numero || '',
+          cidade: empresa?.cidade || empresa?.endereco?.cidade || '',
+          estado: empresa?.estado || empresa?.uf || empresa?.endereco?.estado || empresa?.endereco?.uf || '',
+        };
     return {
-      ...DEFAULT_CONFIG,
+      ...baseConfig,
       ...(empresa?.nomeFantasia ? { nomeFantasia: empresa.nomeFantasia } : {}),
       ...(empresa?.razaoSocial ? { razaoSocial: empresa.razaoSocial } : {}),
       ...(empresa?.cnpj ? { cnpj: empresa.cnpj } : {}),
-      ...(empresa?.codigoEmpresa || empresa?.codigo || empresa?.codigoInterno
-        ? { codigoInterno: empresa.codigoEmpresa || empresa.codigo || empresa.codigoInterno || '' }
+      ...(empresa?.codigoEmpresa || empresa?.codigo || empresa?.codigoInterno || tenant.codigoEmpresa
+        ? {
+            codigoInterno: normalizeCompanyCode(
+              empresa?.codigoEmpresa ||
+                empresa?.codigo ||
+                empresa?.codigoInterno ||
+                tenant.codigoEmpresa
+            ),
+          }
         : {}),
       ...(empresa?.emailCorporativo || empresa?.email
         ? { emailCorporativo: empresa.emailCorporativo || empresa.email || '' }
@@ -128,6 +163,13 @@ function loadStoredConfiguration(empresa?: EmpresaResponse | null): Configuratio
         ? { estado: empresa.estado || empresa.uf || empresa.endereco?.estado || empresa.endereco?.uf || '' }
         : {}),
       ...parsed,
+      codigoInterno:
+        normalizeCompanyCode(
+          empresa?.codigoEmpresa ||
+            empresa?.codigo ||
+            empresa?.codigoInterno ||
+            tenant.codigoEmpresa
+        ) || tenant.codigoEmpresa,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -136,7 +178,9 @@ function loadStoredConfiguration(empresa?: EmpresaResponse | null): Configuratio
 
 export function Configuracao() {
   const navigate = useNavigate();
-  const { empresa } = useAuth();
+  const { user, empresa } = useAuth();
+  const tenant = useMemo(() => resolveCurrentTenant(user, empresa), [user, empresa]);
+  const scopedStorageKey = useMemo(() => getTenantStorageKey(STORAGE_KEY, tenant), [tenant]);
   const {
     theme,
     setTheme,
@@ -153,7 +197,7 @@ export function Configuracao() {
     resetAccessibility,
   } = useTheme();
 
-  const [data, setData] = useState<ConfigurationData>(() => loadStoredConfiguration(empresa));
+  const [data, setData] = useState<ConfigurationData>(() => loadStoredConfiguration(tenant, empresa));
   const [saved, setSaved] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -163,22 +207,24 @@ export function Configuracao() {
   const [logoFeedback, setLogoFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(empresa?.logoUrl || null);
 
-  const empresaId = empresa?.id;
+  const empresaId = empresa?.id ?? tenant.empresaId;
   const companyName = data.nomeFantasia || empresa?.nomeFantasia || empresa?.nomeEmpresa || 'Minha Empresa';
-  const companyCode = data.codigoInterno || empresa?.codigoEmpresa || empresa?.codigo || 'TB884210';
+  const companyCode =
+    normalizeCompanyCode(data.codigoInterno || empresa?.codigoEmpresa || empresa?.codigo || tenant.codigoEmpresa) ||
+    tenant.codigoEmpresa;
 
   const update = useCallback(<K extends keyof ConfigurationData>(key: K, value: ConfigurationData[K]) => {
     setData((current) => {
       const next = { ...current, [key]: value };
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(scopedStorageKey, JSON.stringify(next));
       } catch {
         // Ignora erro de storage
       }
       return next;
     });
     setSaved(false);
-  }, []);
+  }, [scopedStorageKey]);
 
   const handleCopyCode = () => {
     if (navigator.clipboard) {
@@ -193,7 +239,7 @@ export function Configuracao() {
       event.preventDefault();
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(scopedStorageKey, JSON.stringify(data));
       if (empresaId) {
         empresaService
           .atualizarDadosParcialmente(empresaId, {
@@ -217,7 +263,7 @@ export function Configuracao() {
     }
     setSaved(true);
     window.setTimeout(() => setSaved(false), 3000);
-  }, [data, empresaId]);
+  }, [data, empresaId, scopedStorageKey]);
 
   // Atalhos de teclado globais
   useEffect(() => {
@@ -402,14 +448,14 @@ export function Configuracao() {
                   </button>
                 </div>
 
-                {/* Bloco do Código Corporativo Exclusivo para Web */}
+                {/* Bloco do Código Corporativo Unificado (Web & App Mobile) */}
                 <div className="config-empresa-pairing">
                   <div className="pairing-header">
                     <div className="pairing-header-left">
                       <LockIcon size={16} />
                       <strong>Código Corporativo de Acesso</strong>
                     </div>
-                    <span className="pairing-badge-web">Exclusivo para Acesso Web</span>
+                    <span className="pairing-badge-web">Credencial Web &amp; App Mobile</span>
                   </div>
 
                   <div className="pairing-code-row">
@@ -428,7 +474,7 @@ export function Configuracao() {
                   <div className="pairing-notice-box">
                     <InfoIcon size={16} />
                     <p>
-                      <strong>Importante:</strong> Este código é utilizado <strong>exclusivamente para o acesso na plataforma web</strong> (administradores e analistas). O motorista não utiliza este código — seu login é realizado diretamente no aplicativo móvel através de um fluxo próprio com seu CPF e telefone autorizados.
+                      <strong>Importante:</strong> Este código corporativo é uma <strong>credencial obrigatória de acesso para toda a operação</strong> — tanto o <strong>Administrador</strong> e o <strong>Analista</strong> (na plataforma Web) quanto o <strong>Motorista</strong> (no aplicativo Mobile) utilizam este campo de credencial juntamente com seu CPF/e-mail e senha para realizar login e vincular seus registros à empresa.
                     </p>
                   </div>
                 </div>
