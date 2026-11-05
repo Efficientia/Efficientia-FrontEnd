@@ -14,9 +14,18 @@ function idempotencyHeaders(key?: string): { 'Idempotency-Key': string } {
 }
 
 export const relatorioService = {
-  async listar(pagina = 0, tamanho = 20, signal?: AbortSignal): Promise<RelatorioViagemPageResponse> {
+  async listar(
+    pagina = 0,
+    tamanho = 20,
+    signal?: AbortSignal,
+    empresaId?: number | null
+  ): Promise<RelatorioViagemPageResponse> {
     const { data } = await apiClient.get<RelatorioViagemPageResponse>('/api/v1/relatorios-viagem', {
-      params: { pagina, tamanho },
+      params: {
+        pagina,
+        tamanho,
+        ...(empresaId ? { empresaId } : {}),
+      },
       signal,
     });
     return data;
@@ -27,11 +36,15 @@ export const relatorioService = {
    * Usado nos indicadores consolidados, que não podem ser apurados sobre uma única página.
    * A quantidade de páginas segue o `totalPaginas` retornado pela própria API.
    */
-  async listarTodos(signal?: AbortSignal, tamanho = 100): Promise<RelatorioViagemResponse[]> {
-    const primeira = await relatorioService.listar(0, tamanho, signal);
+  async listarTodos(
+    signal?: AbortSignal,
+    tamanho = 100,
+    empresaId?: number | null
+  ): Promise<RelatorioViagemResponse[]> {
+    const primeira = await relatorioService.listar(0, tamanho, signal, empresaId);
     const restantes = await Promise.all(
       Array.from({ length: Math.max(0, primeira.totalPaginas - 1) }, (_, i) =>
-        relatorioService.listar(i + 1, tamanho, signal)
+        relatorioService.listar(i + 1, tamanho, signal, empresaId)
       )
     );
     const porId = new Map<number, RelatorioViagemResponse>();
