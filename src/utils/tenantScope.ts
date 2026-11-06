@@ -10,11 +10,6 @@ export interface TenantIdentity {
 }
 
 const LOCAL_EMPRESAS_STORAGE_KEY = '@efficientia:empresas_cadastradas_v1';
-const LOCAL_ADMINS_STORAGE_KEY = '@efficientia:admins_cadastrados_v1';
-
-export interface LocalAdminStoredRecord extends AdminResponse {
-  senha: string;
-}
 
 const KNOWN_COMPANY_CODES: Record<string, { empresaId: number; codigoEmpresa: string; nomeFantasia: string }> = {
   EFF60720: {
@@ -211,114 +206,6 @@ export function findLocalEmpresaById(id?: number | null): EmpresaResponse | null
   return list.find((item) => Number(item.id) === numId) ?? null;
 }
 
-export function readLocalAdmins(): LocalAdminStoredRecord[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_ADMINS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveLocalAdmin(record: LocalAdminStoredRecord): AdminResponse {
-  const cleanCode = normalizeCompanyCode(record.codigoEmpresa);
-  const cleanEmail = (record.email || '').trim().toLowerCase();
-  const cleanCpf = (record.cpf || '').replace(/\D/g, '') || null;
-
-  const normalized: LocalAdminStoredRecord = {
-    ...record,
-    id: record.id || Date.now(),
-    empresaId: record.empresaId || deriveDeterministicEmpresaId(cleanCode),
-    codigoEmpresa: cleanCode,
-    email: cleanEmail,
-    cpf: cleanCpf,
-    ativo: record.ativo ?? true,
-    criadoEm: record.criadoEm || new Date().toISOString(),
-  };
-
-  if (typeof window !== 'undefined') {
-    try {
-      const list = readLocalAdmins();
-      const idx = list.findIndex(
-        (item) =>
-          normalizeCompanyCode(item.codigoEmpresa) === cleanCode &&
-          (item.email.toLowerCase() === cleanEmail || (cleanCpf && item.cpf === cleanCpf))
-      );
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], ...normalized };
-      } else {
-        list.push(normalized);
-      }
-      localStorage.setItem(LOCAL_ADMINS_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // ignore storage errors
-    }
-  }
-
-  return {
-    id: normalized.id,
-    empresaId: normalized.empresaId,
-    codigoEmpresa: normalized.codigoEmpresa,
-    cnpjEmpresa: normalized.cnpjEmpresa,
-    nome: normalized.nome,
-    email: normalized.email,
-    cpf: normalized.cpf,
-    telefone: normalized.telefone,
-    cargo: normalized.cargo,
-    ativo: normalized.ativo,
-    criadoEm: normalized.criadoEm,
-  };
-}
-
-export function findLocalAdminForLogin(
-  codigoEmpresa: string,
-  identifier: string,
-  senha: string
-): { admin: AdminResponse; empresa: EmpresaResponse } | null {
-  const cleanCode = normalizeCompanyCode(codigoEmpresa);
-  const cleanIdent = (identifier || '').trim().toLowerCase();
-  const cleanCpf = cleanIdent.replace(/\D/g, '');
-  const list = readLocalAdmins();
-
-  const matched = list.find((item) => {
-    if (item.ativo === false) return false;
-    if (normalizeCompanyCode(item.codigoEmpresa) !== cleanCode) return false;
-    const matchesUser =
-      item.email.toLowerCase() === cleanIdent ||
-      (cleanCpf.length === 11 && (item.cpf || '').replace(/\D/g, '') === cleanCpf);
-    if (!matchesUser) return false;
-    return item.senha === senha;
-  });
-
-  if (!matched) return null;
-
-  const empresa =
-    findLocalEmpresaByCode(cleanCode) ||
-    findLocalEmpresaById(matched.empresaId) ||
-    buildFallbackEmpresa(cleanCode, matched.empresaId, {
-      cnpj: matched.cnpjEmpresa || '',
-      emailCorporativo: matched.email,
-    });
-
-  const admin: AdminResponse = {
-    id: matched.id,
-    empresaId: empresa.id || matched.empresaId,
-    codigoEmpresa: empresa.codigoEmpresa || cleanCode,
-    cnpjEmpresa: empresa.cnpj || matched.cnpjEmpresa,
-    nome: matched.nome,
-    email: matched.email,
-    cpf: matched.cpf,
-    telefone: matched.telefone,
-    cargo: matched.cargo,
-    ativo: true,
-    criadoEm: matched.criadoEm,
-  };
-
-  return { admin, empresa };
-}
 
 /**
  * Extrai o código corporativo da empresa mesmo quando o código informado no login

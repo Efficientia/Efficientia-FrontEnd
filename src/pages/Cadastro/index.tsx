@@ -3,13 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { empresaService } from '../../services/empresaService';
 import { normalizeApiError, ApiRequestError } from '../../services/api';
 import { formatCnpj } from '../../utils/validators';
-import {
-  buildFallbackEmpresa,
-  deriveDeterministicEmpresaId,
-  findLocalEmpresaByCnpj,
-  generateOfficialCompanyCode,
-  saveLocalEmpresa,
-} from '../../utils/tenantScope';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
 import {
   ArrowRightIcon,
@@ -107,7 +100,7 @@ export function Cadastro() {
       // Se a empresa já existe (409), tenta buscar o código para permitir prosseguir
       if (normErr.status === 409) {
         try {
-          const empExistente = await empresaService.buscarPorCnpj(cleanCnpj);
+          const empExistente = await empresaService.buscarPorCnpj(cleanCnpj, undefined, false);
           if (empExistente?.codigoEmpresa) {
             setCodigoGerado(empExistente.codigoEmpresa);
             setCodigoDigitado(empExistente.codigoEmpresa);
@@ -132,50 +125,6 @@ export function Cadastro() {
         }
       }
 
-      // Em caso de API indisponível temporária ou bloqueio de rede/CORS no Render
-      if (normErr.status === 0 || normErr.status === undefined || normErr.status >= 500) {
-        const localExistente = findLocalEmpresaByCnpj(cleanCnpj);
-        const codigoGeradoLocal =
-          localExistente?.codigoEmpresa ||
-          generateOfficialCompanyCode(nomeFantasia.trim() || razaoSocial.trim());
-        const idGeradoLocal =
-          localExistente?.id || deriveDeterministicEmpresaId(codigoGeradoLocal);
-
-        const empresaSalva = saveLocalEmpresa(
-          buildFallbackEmpresa(codigoGeradoLocal, idGeradoLocal, {
-            nomeEmpresa: nomeFantasia.trim(),
-            nome: nomeFantasia.trim(),
-            nomeFantasia: nomeFantasia.trim(),
-            razaoSocial: razaoSocial.trim(),
-            cnpj: cleanCnpj,
-            emailCorporativo: cleanEmail,
-            email: cleanEmail,
-            status: 'PENDENTE_PRIMEIRO_ADMIN',
-            requerPrimeiroAdmin: true,
-            etapaCadastro: 1,
-            cadastroCompleto: false,
-            proximoPasso: 'CADASTRO_PRIMEIRO_ADMIN',
-          })
-        );
-
-        setCodigoGerado(empresaSalva.codigoEmpresa);
-        setCodigoDigitado(empresaSalva.codigoEmpresa);
-        localStorage.setItem(
-          PENDING_EMPRESA_KEY,
-          JSON.stringify({
-            id: empresaSalva.id,
-            nomeEmpresa: empresaSalva.nomeEmpresa,
-            nomeFantasia: empresaSalva.nomeFantasia,
-            razaoSocial: empresaSalva.razaoSocial,
-            cnpj: cleanCnpj,
-            emailCorporativo: cleanEmail,
-            codigoEmpresa: empresaSalva.codigoEmpresa,
-          })
-        );
-        setSuccessNotice(`Código corporativo gerado com sucesso: ${empresaSalva.codigoEmpresa}`);
-        setFase('codigo');
-        return;
-      }
 
       setError(normErr);
     } finally {
@@ -195,31 +144,21 @@ export function Cadastro() {
     const cleanCod = codigoDigitado.trim().toUpperCase();
 
     try {
-      // Valida o código na API se possível
-      try {
-        const emp = await empresaService.buscarPorCodigo(cleanCod);
-        if (emp) {
-          const pendingRaw = localStorage.getItem(PENDING_EMPRESA_KEY);
-          const current = pendingRaw ? JSON.parse(pendingRaw) : {};
-          localStorage.setItem(
-            PENDING_EMPRESA_KEY,
-            JSON.stringify({
-              ...current,
-              id: emp.id || current.id,
-              codigoEmpresa: emp.codigoEmpresa || cleanCod,
-              cnpj: emp.cnpj || current.cnpj,
-              nomeEmpresa: emp.nomeEmpresa || current.nomeEmpresa,
-              nomeFantasia: emp.nomeFantasia || current.nomeFantasia,
-              razaoSocial: emp.razaoSocial || current.razaoSocial,
-            })
-          );
-        }
-      } catch {
-        // Se a busca remota falhar, mas o código bate com o gerado localmente, permite avançar
-        if (codigoGerado && cleanCod !== codigoGerado.toUpperCase()) {
-          throw new ApiRequestError('O código informado não confere com o código gerado para esta empresa.', 400);
-        }
-      }
+      const pendingRaw = localStorage.getItem(PENDING_EMPRESA_KEY);
+      const current = pendingRaw ? JSON.parse(pendingRaw) : {};
+      const emp = await empresaService.buscarPorCodigo(cleanCod, undefined, false);
+      localStorage.setItem(
+        PENDING_EMPRESA_KEY,
+        JSON.stringify({
+          ...current,
+          id: emp.id || current.id,
+          codigoEmpresa: emp.codigoEmpresa || cleanCod,
+          cnpj: emp.cnpj || current.cnpj,
+          nomeEmpresa: emp.nomeEmpresa || current.nomeEmpresa,
+          nomeFantasia: emp.nomeFantasia || current.nomeFantasia,
+          razaoSocial: emp.razaoSocial || current.razaoSocial,
+        })
+      );
 
       setSuccessNotice('Código validado com sucesso! Redirecionando para preenchimento dos dados complementares...');
       window.setTimeout(() => navigate('/onboarding', { replace: true }), 400);
@@ -426,7 +365,7 @@ export function Cadastro() {
                 <div className="cadastro-code-value-row">
                   <span className="cadastro-code-label">Código gerado pela API:</span>
                   <strong className="cadastro-code-value">
-                    {codigoGerado || 'EFF60720'}
+                    {codigoGerado || '—'}
                   </strong>
                 </div>
                 <span className="cadastro-code-hint">
@@ -451,7 +390,7 @@ export function Cadastro() {
                       if (error) setError(null);
                     }}
                     onBlur={() => setTouched((p) => ({ ...p, codigoDigitado: true }))}
-                    placeholder="Ex: EFF60720"
+                    placeholder="Código recebido por e-mail"
                     className={`cadastro-input cadastro-code-input ${touched.codigoDigitado && !isCodigoDigitadoValido ? 'has-error' : ''}`}
                   />
                 </div>

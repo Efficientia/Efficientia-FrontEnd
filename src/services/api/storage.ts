@@ -62,7 +62,7 @@ function isStoredAuthProfile(value: unknown): value is StoredAuthProfile {
 export function getStoredToken(): string | null {
   clearLegacyAuthKeys();
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
-  if (token && PLACEHOLDER_TOKENS[token]) {
+  if (token && (PLACEHOLDER_TOKENS[token] || token.startsWith('local-'))) {
     clearStoredAuthSession();
     return null;
   }
@@ -73,7 +73,7 @@ export function getStoredAuthSession(): StoredAuthSession | null {
   clearLegacyAuthKeys();
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
   const rawProfile = localStorage.getItem(AUTH_PROFILE_KEY);
-  if (!token || (token && PLACEHOLDER_TOKENS[token]) || !rawProfile) {
+  if (!token || (token && (PLACEHOLDER_TOKENS[token] || token.startsWith('local-'))) || !rawProfile) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_PROFILE_KEY);
     return null;
