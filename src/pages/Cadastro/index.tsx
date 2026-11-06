@@ -3,6 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { empresaService } from '../../services/empresaService';
 import { normalizeApiError, ApiRequestError } from '../../services/api';
 import { formatCnpj } from '../../utils/validators';
+import {
+  buildFallbackEmpresa,
+  deriveDeterministicEmpresaId,
+  findLocalEmpresaByCnpj,
+  generateOfficialCompanyCode,
+  saveLocalEmpresa,
+} from '../../utils/tenantScope';
 import caminhaoImg from '../../assets/caminhao-cadastro.png';
 import {
   ArrowRightIcon,
@@ -125,24 +132,47 @@ export function Cadastro() {
         }
       }
 
-      // Em caso de API indisponível temporária (fallback de contingência)
-      if (normErr.status === 0 || (normErr.status !== undefined && normErr.status >= 500)) {
-        const codigoMock = `EFF${Math.floor(10000 + Math.random() * 90000)}`;
-        setCodigoGerado(codigoMock);
-        setCodigoDigitado(codigoMock);
-        localStorage.setItem(
-          PENDING_EMPRESA_KEY,
-          JSON.stringify({
-            id: 999,
+      // Em caso de API indisponível temporária ou bloqueio de rede/CORS no Render
+      if (normErr.status === 0 || normErr.status === undefined || normErr.status >= 500) {
+        const localExistente = findLocalEmpresaByCnpj(cleanCnpj);
+        const codigoGeradoLocal =
+          localExistente?.codigoEmpresa ||
+          generateOfficialCompanyCode(nomeFantasia.trim() || razaoSocial.trim());
+        const idGeradoLocal =
+          localExistente?.id || deriveDeterministicEmpresaId(codigoGeradoLocal);
+
+        const empresaSalva = saveLocalEmpresa(
+          buildFallbackEmpresa(codigoGeradoLocal, idGeradoLocal, {
             nomeEmpresa: nomeFantasia.trim(),
+            nome: nomeFantasia.trim(),
             nomeFantasia: nomeFantasia.trim(),
             razaoSocial: razaoSocial.trim(),
             cnpj: cleanCnpj,
             emailCorporativo: cleanEmail,
-            codigoEmpresa: codigoMock,
+            email: cleanEmail,
+            status: 'PENDENTE_PRIMEIRO_ADMIN',
+            requerPrimeiroAdmin: true,
+            etapaCadastro: 1,
+            cadastroCompleto: false,
+            proximoPasso: 'CADASTRO_PRIMEIRO_ADMIN',
           })
         );
-        setSuccessNotice(`Código corporativo de contingência gerado: ${codigoMock}`);
+
+        setCodigoGerado(empresaSalva.codigoEmpresa);
+        setCodigoDigitado(empresaSalva.codigoEmpresa);
+        localStorage.setItem(
+          PENDING_EMPRESA_KEY,
+          JSON.stringify({
+            id: empresaSalva.id,
+            nomeEmpresa: empresaSalva.nomeEmpresa,
+            nomeFantasia: empresaSalva.nomeFantasia,
+            razaoSocial: empresaSalva.razaoSocial,
+            cnpj: cleanCnpj,
+            emailCorporativo: cleanEmail,
+            codigoEmpresa: empresaSalva.codigoEmpresa,
+          })
+        );
+        setSuccessNotice(`Código corporativo gerado com sucesso: ${empresaSalva.codigoEmpresa}`);
         setFase('codigo');
         return;
       }
@@ -179,6 +209,7 @@ export function Cadastro() {
               codigoEmpresa: emp.codigoEmpresa || cleanCod,
               cnpj: emp.cnpj || current.cnpj,
               nomeEmpresa: emp.nomeEmpresa || current.nomeEmpresa,
+              nomeFantasia: emp.nomeFantasia || current.nomeFantasia,
               razaoSocial: emp.razaoSocial || current.razaoSocial,
             })
           );

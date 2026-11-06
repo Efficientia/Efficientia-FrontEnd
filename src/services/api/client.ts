@@ -14,8 +14,8 @@ export function getBaseUrl(): string {
  */
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
-  // O Render pode levar alguns segundos para acordar o serviço após inatividade.
-  timeout: 30000,
+  // O Render pode levar até 60s para acordar o serviço após inatividade.
+  timeout: 60000,
   headers: {
     Accept: 'application/json',
   },

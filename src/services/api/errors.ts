@@ -60,7 +60,7 @@ export function normalizeApiError(error: unknown): ApiRequestError {
 
     return new ApiRequestError(
       normalizedMessage,
-      error.response?.status,
+      error.response?.status ?? 0,
       title,
       fieldErrors
     );
