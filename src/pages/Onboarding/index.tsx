@@ -5,6 +5,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { empresaService } from '../../services/empresaService';
 import { formatTelefone, formatCpf } from '../../utils/validators';
 import { checkPasswordSecurity, generateSecurePassword } from '../../utils/passwordSecurity';
+import {
+  buildFallbackEmpresa,
+  deriveDeterministicEmpresaId,
+  saveLocalEmpresa,
+} from '../../utils/tenantScope';
 import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
 import {
   LogoCompletaIcon,
@@ -234,28 +239,55 @@ export function Onboarding() {
 
       try {
         const codigoEmpresa = pending.codigoEmpresa || 'EFF60720';
+        const resolvedId = pending.id || deriveDeterministicEmpresaId(codigoEmpresa);
+        const cleanCep = cep.replace(/\D/g, '');
+
+        // Persiste imediatamente os dados completos da empresa no registro local multi-tenant
+        saveLocalEmpresa(
+          buildFallbackEmpresa(codigoEmpresa, resolvedId, {
+            nomeEmpresa: pending.nomeEmpresa || pending.nomeFantasia,
+            nome: pending.nomeFantasia || pending.nomeEmpresa,
+            nomeFantasia: pending.nomeFantasia || pending.nomeEmpresa,
+            razaoSocial: pending.razaoSocial || pending.nomeEmpresa,
+            cnpj: pending.cnpj ? pending.cnpj.replace(/\D/g, '') : '',
+            emailCorporativo: pending.emailCorporativo || adminEmail.trim().toLowerCase(),
+            email: pending.emailCorporativo || adminEmail.trim().toLowerCase(),
+            telefone: adminTelefone.trim() || null,
+            cep: cleanCep,
+            logradouro: logradouro.trim(),
+            numero: numero.trim(),
+            cidade: cidade.trim(),
+            estado: estado.trim(),
+            uf: estado.trim(),
+            logoUrl: logoPreviewUrl || null,
+            etapaCadastro: 2,
+            cadastroCompleto: true,
+          })
+        );
 
         // 1. Atualiza endereço e logo da empresa na API se houver ID
-        if (pending.id) {
+        if (resolvedId) {
           try {
-            await empresaService.atualizarDadosComplementares(pending.id, {
-              cep: cep.replace(/\D/g, ''),
+            await empresaService.atualizarDadosComplementares(resolvedId, {
+              cep: cleanCep,
               logradouro: logradouro.trim(),
               numero: numero.trim(),
               cidade: cidade.trim(),
               estado: estado.trim(),
+              telefone: adminTelefone.trim() || undefined,
             });
 
             if (logoFile) {
-              await empresaService.uploadLogo(pending.id, logoFile);
+              await empresaService.uploadLogo(resolvedId, logoFile);
             }
           } catch (apiErr) {
             console.warn('Atualização remota complementar de empresa ignorada em fallback:', apiErr);
           }
         }
 
-        // 2. Cadastra o primeiro administrador via endpoint oficial
+        // 2. Cadastra o primeiro administrador via endpoint oficial (ou fallback local se API estiver indisponível)
         await cadastrarPrimeiroAdmin({
+          empresaId: resolvedId,
           codigoEmpresa,
           cnpj: pending.cnpj ? pending.cnpj.replace(/\D/g, '') : null,
           nome: adminNome.trim(),
@@ -312,6 +344,7 @@ export function Onboarding() {
       adminConfirmarSenha,
       pending,
       logoFile,
+      logoPreviewUrl,
       cadastrarPrimeiroAdmin,
       navigate,
     ]

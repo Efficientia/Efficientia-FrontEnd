@@ -9,6 +9,13 @@ export interface TenantIdentity {
   isPrimaryDemoTenant: boolean;
 }
 
+const LOCAL_EMPRESAS_STORAGE_KEY = '@efficientia:empresas_cadastradas_v1';
+const LOCAL_ADMINS_STORAGE_KEY = '@efficientia:admins_cadastrados_v1';
+
+export interface LocalAdminStoredRecord extends AdminResponse {
+  senha: string;
+}
+
 const KNOWN_COMPANY_CODES: Record<string, { empresaId: number; codigoEmpresa: string; nomeFantasia: string }> = {
   EFF60720: {
     empresaId: 3,
@@ -41,6 +48,277 @@ const KNOWN_COMPANY_CODES: Record<string, { empresaId: number; codigoEmpresa: st
     nomeFantasia: 'Efficientia Logística Viva',
   },
 };
+
+/**
+ * Gera código oficial de empresa no mesmo padrão do CodigoEmpresaGenerator.java do backend:
+ * 3 letras maiúsculas extraídas do nome fantasia/empresa + 5 dígitos numéricos (ex.: FRI48291).
+ */
+export function generateOfficialCompanyCode(nomeEmpresa: string): string {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const normalized = (nomeEmpresa || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z]/g, '')
+    .toUpperCase();
+
+  let prefix = normalized.slice(0, 3);
+  while (prefix.length < 3) {
+    prefix += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+
+  const existingCodes = new Set(readLocalEmpresas().map((e) => e.codigoEmpresa?.toUpperCase()));
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const suffix = String(Math.floor(10000 + Math.random() * 90000));
+    const candidate = `${prefix}${suffix}`;
+    if (!existingCodes.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return `${prefix}${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+/**
+ * Lê todas as empresas registradas localmente no navegador.
+ */
+export function readLocalEmpresas(): EmpresaResponse[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_EMPRESAS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Salva ou atualiza uma empresa no registro local persistente.
+ */
+export function saveLocalEmpresa(empresa: EmpresaResponse): EmpresaResponse {
+  if (typeof window === 'undefined') return empresa;
+  try {
+    const list = readLocalEmpresas();
+    const cleanCode = normalizeCompanyCode(empresa.codigoEmpresa || empresa.codigo || empresa.codigoInterno);
+    const cleanCnpj = (empresa.cnpj || '').replace(/\D/g, '');
+
+    const normalized: EmpresaResponse = {
+      ...empresa,
+      id:
+        empresa.id && Number.isFinite(Number(empresa.id)) && Number(empresa.id) > 0
+          ? Number(empresa.id)
+          : deriveDeterministicEmpresaId(cleanCode),
+      codigoEmpresa: cleanCode,
+      codigo: cleanCode,
+      codigoInterno: cleanCode,
+      cnpj: cleanCnpj || empresa.cnpj || '',
+      nomeEmpresa: empresa.nomeEmpresa || empresa.nomeFantasia || empresa.nome || `Empresa ${cleanCode}`,
+      nome: empresa.nome || empresa.nomeFantasia || empresa.nomeEmpresa || `Empresa ${cleanCode}`,
+      nomeFantasia: empresa.nomeFantasia || empresa.nomeEmpresa || empresa.nome || `Empresa ${cleanCode}`,
+      emailCorporativo: (empresa.emailCorporativo || empresa.email || '').trim().toLowerCase(),
+      email: (empresa.email || empresa.emailCorporativo || '').trim().toLowerCase(),
+      atualizadoEm: new Date().toISOString(),
+    };
+
+    const existingIdx = list.findIndex(
+      (item) =>
+        (cleanCode && normalizeCompanyCode(item.codigoEmpresa) === cleanCode) ||
+        (cleanCnpj && (item.cnpj || '').replace(/\D/g, '') === cleanCnpj) ||
+        (normalized.id && item.id === normalized.id)
+    );
+
+    if (existingIdx >= 0) {
+      const prev = list[existingIdx];
+      const merged: EmpresaResponse = {
+        ...prev,
+        ...normalized,
+        id: normalized.id || prev.id,
+        codigoEmpresa: normalized.codigoEmpresa || prev.codigoEmpresa,
+        codigo: normalized.codigo || prev.codigo,
+        codigoInterno: normalized.codigoInterno || prev.codigoInterno,
+        nomeFantasia: normalized.nomeFantasia || prev.nomeFantasia,
+        nomeEmpresa: normalized.nomeEmpresa || prev.nomeEmpresa,
+        nome: normalized.nome || prev.nome,
+        razaoSocial: normalized.razaoSocial || prev.razaoSocial,
+        cnpj: normalized.cnpj || prev.cnpj,
+        emailCorporativo: normalized.emailCorporativo || prev.emailCorporativo,
+        email: normalized.email || prev.email,
+        telefone: normalized.telefone ?? prev.telefone,
+        cep: normalized.cep ?? prev.cep,
+        logradouro: normalized.logradouro ?? prev.logradouro,
+        numero: normalized.numero ?? prev.numero,
+        cidade: normalized.cidade ?? prev.cidade,
+        estado: normalized.estado ?? prev.estado,
+        uf: normalized.uf ?? normalized.estado ?? prev.uf ?? prev.estado,
+        logoUrl: normalized.logoUrl ?? prev.logoUrl,
+        endereco: {
+          id: normalized.endereco?.id ?? prev.endereco?.id ?? null,
+          cep: normalized.cep ?? normalized.endereco?.cep ?? prev.cep ?? prev.endereco?.cep ?? null,
+          logradouro:
+            normalized.logradouro ??
+            normalized.endereco?.logradouro ??
+            prev.logradouro ??
+            prev.endereco?.logradouro ??
+            null,
+          numero:
+            normalized.numero ?? normalized.endereco?.numero ?? prev.numero ?? prev.endereco?.numero ?? null,
+          cidade:
+            normalized.cidade ?? normalized.endereco?.cidade ?? prev.cidade ?? prev.endereco?.cidade ?? null,
+          estado:
+            normalized.estado ?? normalized.endereco?.estado ?? prev.estado ?? prev.endereco?.estado ?? null,
+          uf:
+            normalized.uf ??
+            normalized.estado ??
+            normalized.endereco?.uf ??
+            prev.uf ??
+            prev.estado ??
+            prev.endereco?.uf ??
+            null,
+        },
+      };
+      list[existingIdx] = merged;
+      localStorage.setItem(LOCAL_EMPRESAS_STORAGE_KEY, JSON.stringify(list));
+      return merged;
+    }
+
+    list.push(normalized);
+    localStorage.setItem(LOCAL_EMPRESAS_STORAGE_KEY, JSON.stringify(list));
+    return normalized;
+  } catch {
+    return empresa;
+  }
+}
+
+export function findLocalEmpresaByCode(codigo?: string | null): EmpresaResponse | null {
+  const clean = normalizeCompanyCode(codigo);
+  if (!clean) return null;
+  const list = readLocalEmpresas();
+  return list.find((item) => normalizeCompanyCode(item.codigoEmpresa) === clean) ?? null;
+}
+
+export function findLocalEmpresaByCnpj(cnpj?: string | null): EmpresaResponse | null {
+  const clean = (cnpj || '').replace(/\D/g, '');
+  if (!clean) return null;
+  const list = readLocalEmpresas();
+  return list.find((item) => (item.cnpj || '').replace(/\D/g, '') === clean) ?? null;
+}
+
+export function findLocalEmpresaById(id?: number | null): EmpresaResponse | null {
+  if (id == null || !Number.isFinite(Number(id))) return null;
+  const numId = Number(id);
+  const list = readLocalEmpresas();
+  return list.find((item) => Number(item.id) === numId) ?? null;
+}
+
+export function readLocalAdmins(): LocalAdminStoredRecord[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_ADMINS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalAdmin(record: LocalAdminStoredRecord): AdminResponse {
+  const cleanCode = normalizeCompanyCode(record.codigoEmpresa);
+  const cleanEmail = (record.email || '').trim().toLowerCase();
+  const cleanCpf = (record.cpf || '').replace(/\D/g, '') || null;
+
+  const normalized: LocalAdminStoredRecord = {
+    ...record,
+    id: record.id || Date.now(),
+    empresaId: record.empresaId || deriveDeterministicEmpresaId(cleanCode),
+    codigoEmpresa: cleanCode,
+    email: cleanEmail,
+    cpf: cleanCpf,
+    ativo: record.ativo ?? true,
+    criadoEm: record.criadoEm || new Date().toISOString(),
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const list = readLocalAdmins();
+      const idx = list.findIndex(
+        (item) =>
+          normalizeCompanyCode(item.codigoEmpresa) === cleanCode &&
+          (item.email.toLowerCase() === cleanEmail || (cleanCpf && item.cpf === cleanCpf))
+      );
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...normalized };
+      } else {
+        list.push(normalized);
+      }
+      localStorage.setItem(LOCAL_ADMINS_STORAGE_KEY, JSON.stringify(list));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  return {
+    id: normalized.id,
+    empresaId: normalized.empresaId,
+    codigoEmpresa: normalized.codigoEmpresa,
+    cnpjEmpresa: normalized.cnpjEmpresa,
+    nome: normalized.nome,
+    email: normalized.email,
+    cpf: normalized.cpf,
+    telefone: normalized.telefone,
+    cargo: normalized.cargo,
+    ativo: normalized.ativo,
+    criadoEm: normalized.criadoEm,
+  };
+}
+
+export function findLocalAdminForLogin(
+  codigoEmpresa: string,
+  identifier: string,
+  senha: string
+): { admin: AdminResponse; empresa: EmpresaResponse } | null {
+  const cleanCode = normalizeCompanyCode(codigoEmpresa);
+  const cleanIdent = (identifier || '').trim().toLowerCase();
+  const cleanCpf = cleanIdent.replace(/\D/g, '');
+  const list = readLocalAdmins();
+
+  const matched = list.find((item) => {
+    if (item.ativo === false) return false;
+    if (normalizeCompanyCode(item.codigoEmpresa) !== cleanCode) return false;
+    const matchesUser =
+      item.email.toLowerCase() === cleanIdent ||
+      (cleanCpf.length === 11 && (item.cpf || '').replace(/\D/g, '') === cleanCpf);
+    if (!matchesUser) return false;
+    return item.senha === senha;
+  });
+
+  if (!matched) return null;
+
+  const empresa =
+    findLocalEmpresaByCode(cleanCode) ||
+    findLocalEmpresaById(matched.empresaId) ||
+    buildFallbackEmpresa(cleanCode, matched.empresaId, {
+      cnpj: matched.cnpjEmpresa || '',
+      emailCorporativo: matched.email,
+    });
+
+  const admin: AdminResponse = {
+    id: matched.id,
+    empresaId: empresa.id || matched.empresaId,
+    codigoEmpresa: empresa.codigoEmpresa || cleanCode,
+    cnpjEmpresa: empresa.cnpj || matched.cnpjEmpresa,
+    nome: matched.nome,
+    email: matched.email,
+    cpf: matched.cpf,
+    telefone: matched.telefone,
+    cargo: matched.cargo,
+    ativo: true,
+    criadoEm: matched.criadoEm,
+  };
+
+  return { admin, empresa };
+}
 
 /**
  * Extrai o código corporativo da empresa mesmo quando o código informado no login
@@ -94,21 +372,31 @@ export function buildFallbackEmpresa(
   partial?: Partial<EmpresaResponse>
 ): EmpresaResponse {
   const normalizedCode = normalizeCompanyCode(codigoEmpresa) || 'EFF60720';
+  const storedLocal =
+    findLocalEmpresaByCode(normalizedCode) ||
+    (empresaId ? findLocalEmpresaById(Number(empresaId)) : null);
+  const mergedPartial: Partial<EmpresaResponse> = {
+    ...(storedLocal || {}),
+    ...(partial || {}),
+  };
+
   const known = KNOWN_COMPANY_CODES[normalizedCode];
   const resolvedId =
     empresaId && Number.isFinite(Number(empresaId)) && Number(empresaId) > 0
       ? Number(empresaId)
+      : mergedPartial.id && Number.isFinite(Number(mergedPartial.id)) && Number(mergedPartial.id) > 0
+      ? Number(mergedPartial.id)
       : known?.empresaId ?? deriveDeterministicEmpresaId(normalizedCode);
 
   const defaultName =
-    partial?.nomeFantasia ||
-    partial?.nomeEmpresa ||
-    partial?.nome ||
-    partial?.razaoSocial ||
+    mergedPartial?.nomeFantasia ||
+    mergedPartial?.nomeEmpresa ||
+    mergedPartial?.nome ||
+    mergedPartial?.razaoSocial ||
     known?.nomeFantasia ||
     `Empresa ${normalizedCode}`;
 
-  const defaultEmail = partial?.emailCorporativo || partial?.email || '';
+  const defaultEmail = mergedPartial?.emailCorporativo || mergedPartial?.email || '';
 
   return {
     id: resolvedId,
@@ -118,36 +406,36 @@ export function buildFallbackEmpresa(
     nomeEmpresa: defaultName,
     nome: defaultName,
     nomeFantasia: defaultName,
-    razaoSocial: partial?.razaoSocial || `${defaultName} S.A.`,
-    cnpj: partial?.cnpj || '',
+    razaoSocial: mergedPartial?.razaoSocial || `${defaultName} S.A.`,
+    cnpj: mergedPartial?.cnpj || '',
     email: defaultEmail,
     emailCorporativo: defaultEmail,
-    telefone: partial?.telefone || null,
-    enderecoId: partial?.enderecoId ?? null,
-    endereco: partial?.endereco ?? {
+    telefone: mergedPartial?.telefone || null,
+    enderecoId: mergedPartial?.enderecoId ?? null,
+    endereco: mergedPartial?.endereco ?? {
       id: null,
-      cep: partial?.cep ?? null,
-      logradouro: partial?.logradouro ?? null,
-      numero: partial?.numero ?? null,
-      cidade: partial?.cidade ?? null,
-      estado: partial?.estado ?? null,
-      uf: partial?.uf ?? partial?.estado ?? null,
+      cep: mergedPartial?.cep ?? null,
+      logradouro: mergedPartial?.logradouro ?? null,
+      numero: mergedPartial?.numero ?? null,
+      cidade: mergedPartial?.cidade ?? null,
+      estado: mergedPartial?.estado ?? null,
+      uf: mergedPartial?.uf ?? mergedPartial?.estado ?? null,
     },
-    cep: partial?.cep || null,
-    logradouro: partial?.logradouro || null,
-    numero: partial?.numero || null,
-    cidade: partial?.cidade || null,
-    uf: partial?.uf || partial?.estado || null,
-    estado: partial?.estado || partial?.uf || null,
-    logoUrl: partial?.logoUrl || null,
-    etapaCadastro: partial?.etapaCadastro ?? 3,
-    cadastroCompleto: partial?.cadastroCompleto ?? true,
-    status: partial?.status || 'ATIVO',
-    requerPrimeiroAdmin: partial?.requerPrimeiroAdmin ?? false,
-    proximoPasso: partial?.proximoPasso || 'PAINEL_ADMINISTRATIVO',
-    mensagem: partial?.mensagem || null,
-    criadoEm: partial?.criadoEm || null,
-    atualizadoEm: partial?.atualizadoEm || null,
+    cep: mergedPartial?.cep || null,
+    logradouro: mergedPartial?.logradouro || null,
+    numero: mergedPartial?.numero || null,
+    cidade: mergedPartial?.cidade || null,
+    uf: mergedPartial?.uf || mergedPartial?.estado || null,
+    estado: mergedPartial?.estado || mergedPartial?.uf || null,
+    logoUrl: mergedPartial?.logoUrl || null,
+    etapaCadastro: mergedPartial?.etapaCadastro ?? 3,
+    cadastroCompleto: mergedPartial?.cadastroCompleto ?? true,
+    status: mergedPartial?.status || 'ATIVO',
+    requerPrimeiroAdmin: mergedPartial?.requerPrimeiroAdmin ?? false,
+    proximoPasso: mergedPartial?.proximoPasso || 'PAINEL_ADMINISTRATIVO',
+    mensagem: mergedPartial?.mensagem || null,
+    criadoEm: mergedPartial?.criadoEm || null,
+    atualizadoEm: mergedPartial?.atualizadoEm || null,
   };
 }
 
@@ -169,10 +457,13 @@ export function resolveCurrentTenant(
 
   const codigoEmpresa = normalizeCompanyCode(rawEmpresaCode) || 'EFF60720';
   const knownCompany = KNOWN_COMPANY_CODES[codigoEmpresa];
+  const storedLocal = findLocalEmpresaByCode(codigoEmpresa);
 
   const rawEmpresaId =
     empresa?.id ??
-    (user && 'empresaId' in user && user.empresaId != null ? Number(user.empresaId) : null);
+    (user && 'empresaId' in user && user.empresaId != null ? Number(user.empresaId) : null) ??
+    storedLocal?.id ??
+    null;
 
   const empresaId =
     knownCompany && (!rawEmpresaId || Number(rawEmpresaId) > 1000)
@@ -190,7 +481,13 @@ export function resolveCurrentTenant(
   return {
     empresaId,
     codigoEmpresa,
-    nomeEmpresa: empresa?.nomeFantasia || empresa?.nomeEmpresa || empresa?.razaoSocial || undefined,
+    nomeEmpresa:
+      empresa?.nomeFantasia ||
+      empresa?.nomeEmpresa ||
+      empresa?.razaoSocial ||
+      storedLocal?.nomeFantasia ||
+      storedLocal?.nomeEmpresa ||
+      undefined,
     isPrimaryDemoTenant,
   };
 }
