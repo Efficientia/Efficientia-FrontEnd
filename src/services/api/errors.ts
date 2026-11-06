@@ -54,10 +54,12 @@ export function normalizeApiError(error: unknown): ApiRequestError {
     } else if (isTimeout) {
       normalizedMessage =
         'A API do Efficientia não respondeu no tempo esperado. Tente novamente em instantes.';
+    } else if (!error.response) {
+      normalizedMessage =
+        'Não foi possível conectar à API do Efficientia. Verifique a conexão, o CORS e tente novamente.';
     } else {
       normalizedMessage = backendMessage ?? error.message;
     }
-
     return new ApiRequestError(
       normalizedMessage,
       error.response?.status ?? 0,

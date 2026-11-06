@@ -460,7 +460,7 @@ export function Motoristas() {
       empresaId ? funcionarioService.listarFuncionarios(empresaId, signal) : Promise.resolve([]),
     [empresaId]
   );
-  const { data: remoteEmployees, isLoading, refetch } = useFetchData(fetchEmployees);
+  const { data: remoteEmployees, error: remoteError, isLoading, refetch } = useFetchData(fetchEmployees);
 
   // Sincroniza com dados remotos da API garantindo isolamento por empresaId / codigoEmpresa
   const allCollaborators = useMemo(() => {
@@ -616,14 +616,15 @@ export function Motoristas() {
     if (!canEdit || !deleteCandidate || deleteCandidate.isCurrentUser) return;
 
     try {
-      if (empresaId) {
-        await funcionarioService.excluirFuncionario(empresaId, deleteCandidate.id);
+      if (!empresaId) {
+        throw new Error('A empresa autenticada não possui um ID válido na API.');
       }
+      await funcionarioService.excluirFuncionario(empresaId, deleteCandidate.id);
       const updated = collaborators.filter((c) => c.id !== deleteCandidate.id);
       persistCollaborators(updated);
       setDeleteCandidate(null);
-    } catch {
-      // Ignora erro
+    } catch (err: unknown) {
+      setModalError(err instanceof Error ? err.message : 'Não foi possível excluir o colaborador.');
     }
   };
 
@@ -636,13 +637,18 @@ export function Motoristas() {
     }
 
     const novoStatus = colaborador.ativo === false;
-    const updated = collaborators.map((c) =>
-      c.id === colaborador.id ? { ...c, ativo: novoStatus } : c
-    );
-    persistCollaborators(updated);
 
-    if (empresaId) {
+    try {
+      if (!empresaId) {
+        throw new Error('A empresa autenticada não possui um ID válido na API.');
+      }
       await funcionarioService.alternarStatus(empresaId, colaborador.id, novoStatus);
+      const updated = collaborators.map((c) =>
+        c.id === colaborador.id ? { ...c, ativo: novoStatus } : c
+      );
+      persistCollaborators(updated);
+    } catch (err: unknown) {
+      setModalError(err instanceof Error ? err.message : 'Não foi possível atualizar o status.');
     }
   };
 
@@ -656,6 +662,10 @@ export function Motoristas() {
     }
     if (cleanedCpf.length !== 11) {
       setModalError('O CPF deve conter exatamente 11 dígitos numéricos.');
+      return;
+    }
+    if (hasPassword && !formEmail.trim()) {
+      setModalError('Informe o e-mail de acesso do colaborador.');
       return;
     }
 
@@ -681,12 +691,12 @@ export function Motoristas() {
     setModalSubmitting(true);
     setModalError(null);
 
-    const resolvedCompanyCode =
-      tenant.codigoEmpresa && tenant.codigoEmpresa !== 'EFF-001'
-        ? tenant.codigoEmpresa
-        : 'EFF60720';
+    const resolvedCompanyCode = tenant.codigoEmpresa.trim().toUpperCase();
 
     try {
+      if (!empresaId || !resolvedCompanyCode) {
+        throw new Error('A empresa autenticada não possui identificação válida na API.');
+      }
       if (editingColaborador) {
         // MODO EDIÇÃO
         const updatePayload: AtualizarFuncionarioEmpresaRequest = {
@@ -717,16 +727,14 @@ export function Motoristas() {
               }
             : c
         );
-        persistCollaborators(updatedList);
 
-        if (empresaId) {
-          await funcionarioService.atualizarFuncionario(
-            empresaId,
-            editingColaborador.id,
-            updatePayload,
-            resolvedCompanyCode
-          );
-        }
+        await funcionarioService.atualizarFuncionario(
+          empresaId,
+          editingColaborador.id,
+          updatePayload,
+          resolvedCompanyCode
+        );
+        persistCollaborators(updatedList);
 
         setModalSuccess(
           `Colaborador atualizado! Código da empresa para login: ${resolvedCompanyCode}`
@@ -741,9 +749,7 @@ export function Motoristas() {
           tipo: tipoColaborador,
           nome: formNome.trim(),
           cpf: cleanedCpf,
-          email:
-            formEmail.trim().toLowerCase() ||
-            `${formNome.trim().toLowerCase().replace(/\s+/g, '.')}@operacional.local`,
+          email: formEmail.trim().toLowerCase(),
           telefone: formTelefone.replace(/\D/g, ''),
           cargo:
             formCargo.trim() ||
@@ -769,8 +775,7 @@ export function Motoristas() {
 
         let createdColab = newColab;
 
-        if (empresaId) {
-          if (tipoColaborador === 'administrador') {
+        if (tipoColaborador === 'administrador') {
             await funcionarioService.cadastrarNovoAdmin(empresaId, {
               nome: formNome.trim(),
               email: formEmail.trim().toLowerCase(),
@@ -805,7 +810,6 @@ export function Motoristas() {
               codigoEmpresa: apiCreated.codigoEmpresa || resolvedCompanyCode,
             };
           }
-        }
 
         const updatedList = [createdColab, ...collaborators];
         persistCollaborators(updatedList);
@@ -855,6 +859,12 @@ export function Motoristas() {
             <span>
               <strong>Perfil de Analista:</strong> Acesso habilitado para consulta e filtragem da equipe. Ações de cadastro, alteração e exclusão são restritas ao Administrador.
             </span>
+          </div>
+        )}
+        {remoteError && (
+          <div className="modal-alert modal-alert-error" role="alert">
+            <AlertTriangleIcon size={16} />
+            <span>{remoteError.message}</span>
           </div>
         )}
         {/* CABEÇALHO DA PÁGINA */}

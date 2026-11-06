@@ -201,47 +201,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         normalizeCompanyCode(dados.codigoEmpresaCorporativo) ||
         normalizeCompanyCode(dados.codigoEmpresa) ||
         normalizeCompanyCode(response.usuario.codigoEmpresa) ||
-        normalizeCompanyCode(response.usuario.codigoInterno) ||
-        'EFF60720';
+        normalizeCompanyCode(response.usuario.codigoInterno);
 
+      if (!corporateCode) {
+        throw new Error('O código da empresa não foi retornado pela API.');
+      }
+
+      let empresaLookupError: unknown = null;
       let empresaCarregada: EmpresaResponse | null = null;
 
-      // 1. Tenta buscar pelo código corporativo real da empresa
-      if (corporateCode) {
-        try {
-          empresaCarregada = await empresaService.buscarPorCodigo(corporateCode);
-        } catch {
-          // tenta fallback
-        }
+      try {
+        empresaCarregada = await empresaService.buscarPorCodigo(corporateCode, undefined, false);
+      } catch (err) {
+        empresaLookupError = err;
+        // Tenta o código informado e, em seguida, o ID retornado pelo backend.
       }
 
-      // 2. Se ainda não encontrou e o código enviado ao login era diferente, tenta por ele
       if (!empresaCarregada && dados.codigoEmpresa && dados.codigoEmpresa !== corporateCode) {
         try {
-          empresaCarregada = await empresaService.buscarPorCodigo(dados.codigoEmpresa);
-        } catch {
-          // tenta fallback
+          empresaCarregada = await empresaService.buscarPorCodigo(dados.codigoEmpresa, undefined, false);
+        } catch (err) {
+          empresaLookupError = err;
+          // Tenta o ID retornado pelo backend.
         }
       }
 
-      // 3. Se o usuário possui empresaId numérico, tenta buscar por ID
       if (!empresaCarregada && response.usuario.empresaId) {
         try {
-          empresaCarregada = await empresaService.buscarPorId(response.usuario.empresaId);
-        } catch {
-          // tenta fallback
+          empresaCarregada = await empresaService.buscarPorId(response.usuario.empresaId, undefined, false);
+        } catch (err) {
+          empresaLookupError = err;
+          // A falha será exibida ao usuário abaixo.
         }
       }
-
-      // 4. Garante contexto de empresa isolado para o Analista mesmo se o endpoint público retornar 404
       if (!empresaCarregada) {
-        empresaCarregada = buildFallbackEmpresa(corporateCode, response.usuario.empresaId);
+        if (empresaLookupError) {
+          throw empresaLookupError;
+        }
+        throw new Error('Usuário autenticado, mas a empresa não foi localizada na API.');
       }
-
       const usuarioComTenant: UsuarioResponse = {
         ...response.usuario,
         empresaId: empresaCarregada.id,
-        codigoEmpresa: empresaCarregada.codigoEmpresa || corporateCode,
+        codigoEmpresa: empresaCarregada.codigoEmpresa,
       };
 
       persistSession({
@@ -261,20 +263,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.loginAdmin(dados);
       const roles = response.roles.map(normalizeRole);
-      const corporateCode =
-        normalizeCompanyCode(response.empresa?.codigoEmpresa) ||
-        normalizeCompanyCode(response.admin?.codigoEmpresa) ||
-        normalizeCompanyCode(dados.codigoEmpresa) ||
-        'EFF60720';
-
-      const empresaGarantida =
-        response.empresa ||
-        buildFallbackEmpresa(corporateCode, response.admin?.empresaId);
-
       persistSession({
         token: response.token,
         user: response.admin,
-        empresa: empresaGarantida,
+        empresa: response.empresa,
         roles,
       });
       return roles;

@@ -5,11 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { empresaService } from '../../services/empresaService';
 import { formatTelefone, formatCpf } from '../../utils/validators';
 import { checkPasswordSecurity, generateSecurePassword } from '../../utils/passwordSecurity';
-import {
-  buildFallbackEmpresa,
-  deriveDeterministicEmpresaId,
-  saveLocalEmpresa,
-} from '../../utils/tenantScope';
 import { GenericUserAvatar } from '../../components/Feedback/GenericUserAvatar';
 import {
   LogoCompletaIcon,
@@ -45,12 +40,12 @@ function readPendingEmpresa(): PendingEmpresaData {
     // fallback
   }
   return {
-    codigoEmpresa: 'EFF60720',
+    codigoEmpresa: '',
     cnpj: '',
-    nomeEmpresa: 'Minha Empresa',
-    nomeFantasia: 'Minha Empresa',
-    razaoSocial: 'Minha Empresa Ltda',
-    emailCorporativo: 'admin@empresa.com.br',
+    nomeEmpresa: '',
+    nomeFantasia: '',
+    razaoSocial: '',
+    emailCorporativo: '',
   };
 }
 
@@ -238,54 +233,27 @@ export function Onboarding() {
       setIsSubmitting(true);
 
       try {
-        const codigoEmpresa = pending.codigoEmpresa || 'EFF60720';
-        const resolvedId = pending.id || deriveDeterministicEmpresaId(codigoEmpresa);
-        const cleanCep = cep.replace(/\D/g, '');
-
-        // Persiste imediatamente os dados completos da empresa no registro local multi-tenant
-        saveLocalEmpresa(
-          buildFallbackEmpresa(codigoEmpresa, resolvedId, {
-            nomeEmpresa: pending.nomeEmpresa || pending.nomeFantasia,
-            nome: pending.nomeFantasia || pending.nomeEmpresa,
-            nomeFantasia: pending.nomeFantasia || pending.nomeEmpresa,
-            razaoSocial: pending.razaoSocial || pending.nomeEmpresa,
-            cnpj: pending.cnpj ? pending.cnpj.replace(/\D/g, '') : '',
-            emailCorporativo: pending.emailCorporativo || adminEmail.trim().toLowerCase(),
-            email: pending.emailCorporativo || adminEmail.trim().toLowerCase(),
-            telefone: adminTelefone.trim() || null,
-            cep: cleanCep,
-            logradouro: logradouro.trim(),
-            numero: numero.trim(),
-            cidade: cidade.trim(),
-            estado: estado.trim(),
-            uf: estado.trim(),
-            logoUrl: logoPreviewUrl || null,
-            etapaCadastro: 2,
-            cadastroCompleto: true,
-          })
-        );
-
-        // 1. Atualiza endereço e logo da empresa na API se houver ID
-        if (resolvedId) {
-          try {
-            await empresaService.atualizarDadosComplementares(resolvedId, {
-              cep: cleanCep,
-              logradouro: logradouro.trim(),
-              numero: numero.trim(),
-              cidade: cidade.trim(),
-              estado: estado.trim(),
-              telefone: adminTelefone.trim() || undefined,
-            });
-
-            if (logoFile) {
-              await empresaService.uploadLogo(resolvedId, logoFile);
-            }
-          } catch (apiErr) {
-            console.warn('Atualização remota complementar de empresa ignorada em fallback:', apiErr);
-          }
+        const codigoEmpresa = pending.codigoEmpresa.trim();
+        const resolvedId = pending.id;
+        if (!codigoEmpresa || !resolvedId) {
+          throw new Error('Não foi possível identificar a empresa criada. Reinicie o cadastro da empresa.');
         }
 
-        // 2. Cadastra o primeiro administrador via endpoint oficial (ou fallback local se API estiver indisponível)
+        const cleanCep = cep.replace(/\D/g, '');
+
+        await empresaService.atualizarDadosComplementares(resolvedId, {
+          cep: cleanCep,
+          logradouro: logradouro.trim(),
+          numero: numero.trim(),
+          cidade: cidade.trim(),
+          estado: estado.trim(),
+          telefone: adminTelefone.trim() || undefined,
+        });
+
+        if (logoFile) {
+          await empresaService.uploadLogo(resolvedId, logoFile);
+        }
+
         await cadastrarPrimeiroAdmin({
           empresaId: resolvedId,
           codigoEmpresa,
@@ -344,7 +312,6 @@ export function Onboarding() {
       adminConfirmarSenha,
       pending,
       logoFile,
-      logoPreviewUrl,
       cadastrarPrimeiroAdmin,
       navigate,
     ]
@@ -380,7 +347,7 @@ export function Onboarding() {
             {/* HEADER DA ETAPA */}
             <div className="onb-header-group">
               <div className="onb-step-badge">
-                <span className="onb-step-tag">CÓDIGO: {pending.codigoEmpresa || 'EFF60720'}</span>
+                <span className="onb-step-tag">CÓDIGO: {pending.codigoEmpresa || 'não disponível'}</span>
                 <span className="onb-step-status">Finalização do Cadastro</span>
               </div>
               <h2 className="onb-title">Dados Complementares e Acesso do Administrador</h2>
